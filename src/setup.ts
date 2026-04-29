@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import * as p from '@clack/prompts';
 import { CONFIG_FILE, loadConfig, saveConfig } from './config.js';
+import { detectDistro, renderLlamaInstallHint } from './distro.js';
 import { probeServer } from './server.js';
 import { exitIfCancelled, pc } from './ui.js';
 import { autoThreads, expandHome, have } from './util.js';
@@ -38,10 +39,11 @@ export async function runSetup(): Promise<void> {
 
   // ── llama.cpp source: spawn locally vs use an existing server ───────
   const llamaPresent = have('llama-server');
+  const distro = detectDistro();
 
   const sourceLabel = llamaPresent
-    ? 'llama-server is on PATH — pi-llm will spawn it for you'
-    : 'llama-server NOT found in PATH';
+    ? `llama-server is on PATH — pi-llm will spawn it for you (detected ${distro.prettyName})`
+    : `llama-server NOT found in PATH (detected ${distro.prettyName})`;
   p.log.message(sourceLabel);
 
   type Source = 'local' | 'external';
@@ -109,19 +111,9 @@ export async function runSetup(): Promise<void> {
 
   if (source === 'local' && !llamaPresent) {
     p.log.warn('llama-server is not yet on PATH.');
+    p.log.message(renderLlamaInstallHint());
     p.log.message(
-      [
-        'Install llama.cpp:',
-        '  Arch:   sudo pacman -S llama.cpp',
-        '  macOS:  brew install llama.cpp',
-        '  Other:  build from source — https://github.com/ggml-org/llama.cpp',
-        '',
-        'Or re-run `pi-llm setup` and pick External to point pi-llm at an',
-        'existing server (e.g. docker compose).',
-        '',
-        'If you build from source, set llamaServer/llamaCli in',
-        `${CONFIG_FILE} to absolute paths.`,
-      ].join('\n'),
+      `If you built it elsewhere, set llamaServer/llamaCli in ${CONFIG_FILE} to absolute paths.`,
     );
   }
 

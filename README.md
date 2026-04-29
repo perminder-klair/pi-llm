@@ -86,7 +86,7 @@ Edit `ctx_for_model()` in the script to tune for your VRAM budget.
 | Server PID | `${XDG_RUNTIME_DIR:-/tmp}/pi-llm-server.pid` |
 | Server log | `${XDG_RUNTIME_DIR:-/tmp}/pi-llm-server.log` |
 | Models dir (configurable) | `~/.lmstudio/models` (default) |
-| Downloaded GGUFs | `$MODELS_DIR/extra-models/<repo>/` |
+| Downloaded GGUFs | `$MODELS_DIR/<repo>/` |
 
 Runtime files live in `/run/user/$UID/` on Linux — wiped on reboot. That's intentional.
 

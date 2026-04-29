@@ -17,7 +17,6 @@ auto_threads() {
 }
 
 MODELS_DIR="${MODELS_DIR:-$HOME/.lmstudio/models}"
-EXTRA_DIR="${EXTRA_DIR:-$MODELS_DIR/extra-models}"
 DEFAULT_PORT="${DEFAULT_PORT:-8080}"
 DEFAULT_CTX="${DEFAULT_CTX:-32768}"
 DEFAULT_THREADS="${DEFAULT_THREADS:-$(auto_threads)}"
@@ -464,7 +463,7 @@ do_download() {
     # Create directory from repo name
     local repo_name
     repo_name=$(basename "$repo")
-    local dest_dir="${EXTRA_DIR}/${repo_name}"
+    local dest_dir="${MODELS_DIR}/${repo_name}"
     mkdir -p "$dest_dir"
 
     echo ""

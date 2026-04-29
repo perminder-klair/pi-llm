@@ -21,6 +21,25 @@ RUNDIR="${XDG_RUNTIME_DIR:-/tmp}"
 PIDFILE="$RUNDIR/pi-llm-server.pid"
 LOGFILE="$RUNDIR/pi-llm-server.log"
 
+# Required only for serve/chat/pi/bench. Status/info/list don't need llama.cpp.
+require_llama() {
+    if ! command -v "$LLAMA_SERVER" >/dev/null 2>&1; then
+        cat >&2 <<EOF
+pi-llm: '$LLAMA_SERVER' not found in PATH.
+
+Install llama.cpp by one of:
+  sudo pacman -S llama.cpp                       # official Arch package
+  yay -S llama.cpp-vulkan-git                    # AUR (Vulkan / Radeon)
+  yay -S llama.cpp-hip-git                       # AUR (ROCm / HIP)
+  build from source: https://github.com/ggml-org/llama.cpp
+
+If you built from source, ensure llama-server/llama-cli are on \$PATH or
+set LLAMA_SERVER / LLAMA_CLI in ~/.config/pi-llm/config to absolute paths.
+EOF
+        exit 1
+    fi
+}
+
 # Per-model context override — picked by name match.
 # MoE / hybrid-attention models tolerate big ctx (small per-token KV).
 # Dense models hit VRAM hard above ~32k.
@@ -129,6 +148,7 @@ server_status() {
 }
 
 do_serve() {
+    require_llama
     if server_running; then
         local pid
         pid=$(cat "$PIDFILE")
@@ -217,6 +237,7 @@ do_serve() {
 }
 
 do_chat() {
+    require_llama
     local model_path
     model_path=$(pick_model)
     [[ -z "$model_path" ]] && return
@@ -295,6 +316,7 @@ do_status() {
 }
 
 do_bench() {
+    require_llama
     local model_path
     model_path=$(pick_model)
     [[ -z "$model_path" ]] && return
@@ -527,6 +549,7 @@ do_search() {
 }
 
 do_pi() {
+    require_llama
     local model_path=""
 
     # Accept model name as argument or pick interactively

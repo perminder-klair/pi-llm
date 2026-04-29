@@ -44,8 +44,9 @@ warn()  { gum style --foreground 214 "! $*"; }
 err()   { gum style --foreground 196 "✗ $*"; }
 
 # ── 2. Dependency check ────────────────────────────────────────────────
+# Required (pacman-installable) deps for the TUI itself.
 check_deps() {
-    gum style --foreground 212 --bold "Checking dependencies"
+    gum style --foreground 212 --bold "Checking core dependencies"
     local -a missing_pkg=()
     local -a missing_cmd=()
 
@@ -54,17 +55,14 @@ check_deps() {
         [curl]=curl
         [jq]=jq
         [python3]=python
-        [llama-server]=llama.cpp
-        [llama-cli]=llama.cpp
     )
 
-    for cmd in bash curl jq python3 llama-server llama-cli; do
+    for cmd in bash curl jq python3; do
         if have "$cmd"; then
             ok "$cmd"
         else
             missing_cmd+=("$cmd")
-            local pkg="${CMD_TO_PKG[$cmd]}"
-            [[ ! " ${missing_pkg[*]:-} " == *" $pkg "* ]] && missing_pkg+=("$pkg")
+            missing_pkg+=("${CMD_TO_PKG[$cmd]}")
         fi
     done
 
@@ -82,6 +80,29 @@ check_deps() {
     else
         err "Aborting — required dependencies missing."
         exit 1
+    fi
+}
+
+# llama.cpp can come from the official repo, AUR variants, or a source build.
+# We only check that the binaries exist; we don't force a specific package.
+check_llamacpp() {
+    gum style --foreground 212 --bold "llama.cpp"
+    if have llama-server && have llama-cli; then
+        ok "llama-server: $(command -v llama-server)"
+        ok "llama-cli:    $(command -v llama-cli)"
+        return 0
+    fi
+    warn "llama-server / llama-cli not found in PATH."
+    note "Install one of:"
+    note "  sudo pacman -S llama.cpp                # official Arch package"
+    note "  yay -S llama.cpp-vulkan-git             # AUR (Vulkan / Radeon)"
+    note "  yay -S llama.cpp-hip-git                # AUR (ROCm / HIP)"
+    note "  build from source: https://github.com/ggml-org/llama.cpp"
+    note ""
+    note "If you build from source, add the build/bin dir to PATH or set"
+    note "LLAMA_SERVER / LLAMA_CLI to absolute paths in $CONFIG_FILE."
+    if is_arch && gum confirm --default=no "Try 'sudo pacman -S llama.cpp' now?"; then
+        sudo pacman -S --needed llama.cpp || warn "pacman install failed — install manually."
     fi
 }
 
@@ -213,6 +234,9 @@ install_binary() {
 # ── main ───────────────────────────────────────────────────────────────
 banner
 check_deps
+echo ""
+check_llamacpp
+echo ""
 check_optional
 echo ""
 configure_models

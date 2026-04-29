@@ -12,9 +12,9 @@ depends=(
     'curl'
     'jq'
     'python'
-    'llama.cpp'
 )
 optdepends=(
+    'llama.cpp: official package providing llama-server/llama-cli (alternatives: any AUR variant — llama.cpp-vulkan-git, llama.cpp-hip-git, etc. — or build from source)'
     'rocm-smi-lib: VRAM monitoring on AMD GPUs'
     'vulkan-tools: Vulkan device introspection'
 )

@@ -99,35 +99,24 @@ export async function serve(): Promise<void> {
     port,
     ctx,
     threads,
-    detached: false,
+    // Detached: server keeps running after pi-llm exits. Stop it with
+    // `pi-llm stop`. Logs go to the log file (see `pi-llm logs`).
+    detached: true,
   });
-
-  // If the user Ctrl-Cs us, stop the server too.
-  const onSignal = () => {
-    if (child.pid) {
-      try {
-        process.kill(child.pid, 'SIGTERM');
-      } catch {
-        // ignore
-      }
-    }
-  };
-  process.once('SIGINT', onSignal);
-  process.once('SIGTERM', onSignal);
 
   const ready = await waitReady(port, 60);
   if (ready) {
     console.log();
     console.log(pc.green(pc.bold(`  Server ready at http://0.0.0.0:${port}/v1`)));
-    console.log(`  PID: ${child.pid}  |  Stop with Ctrl-C  |  Or: pi-llm stop`);
-  } else if (!child.killed && child.exitCode === null) {
-    p.log.warn('Server did not become ready within 60s — check output above.');
+    console.log(
+      `  PID: ${child.pid}  |  Stop with: pi-llm stop  |  Logs: pi-llm logs`,
+    );
+    return;
   }
 
-  // Stay attached until the child exits.
-  await new Promise<void>((resolve) => {
-    child.on('exit', () => resolve());
-  });
+  p.log.warn(
+    'Server did not become ready within 60s — run `pi-llm logs` to see output.',
+  );
 }
 
 function printStartupBanner(model: Model, port: number, ctx: number): void {

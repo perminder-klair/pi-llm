@@ -103,7 +103,7 @@ DEFAULT_THREADS=10                  # auto-detected: nproc - 2
 LLAMA_SERVER="llama-server"
 LLAMA_CLI="llama-cli"
 LLAMA_BENCH="llama-bench"
-PI_SKILL_DIR="$HOME/.claude/skills/agent-browser"   # optional, skipped if missing
+# PI_SKILL_DIR="$HOME/.claude/skills/agent-browser"  # optional pi --skill, no default
 ```
 
 Source builds: if the binaries aren't on `$PATH`, point them at absolute paths:

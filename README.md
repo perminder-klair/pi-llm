@@ -29,14 +29,46 @@ full command list.
 - `--image-min-tokens 1024` when an `mmproj*.gguf` sibling is detected
 - Per-model auto-tuned context (MoE → 128k, 27B-class dense → 32k, etc.)
 
-## Install (Arch Linux)
+## Install
+
+The fastest path is the interactive installer — it checks deps, asks for the
+models directory, sets server defaults, optionally helps with `pi`, writes a
+config file, and finally installs the binary (Arch package or symlink).
+
+```bash
+git clone https://github.com/perminder-klair/pi-llm.git
+cd pi-llm
+./install.sh
+```
+
+Manual Arch package build:
 
 ```bash
 cd pi-llm
 makepkg -si
 ```
 
-Then run `pi-llm`.
+Manual symlink (no root):
+
+```bash
+ln -sf "$PWD/pi-llm" "$HOME/.local/bin/pi-llm"
+```
+
+## Configuration
+
+`install.sh` writes `${XDG_CONFIG_HOME:-~/.config}/pi-llm/config`, which the
+script sources at startup. Override any of these:
+
+```bash
+MODELS_DIR="$HOME/.lmstudio/models"
+DEFAULT_PORT=8080
+DEFAULT_CTX=32768
+DEFAULT_THREADS=10
+LLAMA_SERVER="llama-server"
+LLAMA_CLI="llama-cli"
+```
+
+Re-run `./install.sh` any time to reconfigure, or edit the file directly.
 
 ## Dependencies
 
@@ -45,13 +77,11 @@ Then run `pi-llm`.
 - Optional: `pi` (for the `pi-llm pi` coding-agent integration)
 - Optional: `rocm-smi-lib`, `vulkan-tools` — diagnostics
 
-## Configuration
+## Per-model context
 
-By default `pi-llm` looks for GGUF models in `~/.lmstudio/models`. Downloads
-go to `~/.lmstudio/models/extra-models/<repo>/`.
-
-Per-model context size is picked by name pattern in `ctx_for_model()` —
-edit the script to tune for your VRAM budget.
+`pi-llm pi` auto-tunes context size from the model filename via
+`ctx_for_model()` (MoE → 128k, 27B-class dense → 32k, etc.). Edit the function
+in the script to tune for your own VRAM budget.
 
 ## License
 

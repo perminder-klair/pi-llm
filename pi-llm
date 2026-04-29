@@ -4,13 +4,18 @@
 
 set -euo pipefail
 
-MODELS_DIR="$HOME/.lmstudio/models"
-EXTRA_DIR="$MODELS_DIR/extra-models"
-DEFAULT_PORT=8080
-DEFAULT_CTX=32768
-DEFAULT_THREADS=10
-LLAMA_SERVER="llama-server"
-LLAMA_CLI="llama-cli"
+# Load user config (written by install.sh) — overrides defaults below.
+PI_LLM_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/pi-llm/config"
+# shellcheck source=/dev/null
+[[ -f "$PI_LLM_CONFIG" ]] && source "$PI_LLM_CONFIG"
+
+MODELS_DIR="${MODELS_DIR:-$HOME/.lmstudio/models}"
+EXTRA_DIR="${EXTRA_DIR:-$MODELS_DIR/extra-models}"
+DEFAULT_PORT="${DEFAULT_PORT:-8080}"
+DEFAULT_CTX="${DEFAULT_CTX:-32768}"
+DEFAULT_THREADS="${DEFAULT_THREADS:-10}"
+LLAMA_SERVER="${LLAMA_SERVER:-llama-server}"
+LLAMA_CLI="${LLAMA_CLI:-llama-cli}"
 
 RUNDIR="${XDG_RUNTIME_DIR:-/tmp}"
 PIDFILE="$RUNDIR/pi-llm-server.pid"

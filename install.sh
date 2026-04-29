@@ -149,17 +149,22 @@ configure_models() {
 # ── 5. Server defaults ─────────────────────────────────────────────────
 configure_server() {
     gum style --foreground 212 --bold "Server defaults"
-    if gum confirm --default=yes "Use sensible defaults? (port 8080, ctx 32768, threads 10)"; then
+    # Auto-detect: leave 2 cores headroom, floor at 1.
+    local nproc_total nproc_default
+    nproc_total=$(nproc 2>/dev/null || echo 4)
+    nproc_default=$(( nproc_total > 2 ? nproc_total - 2 : 1 ))
+
+    if gum confirm --default=yes "Use sensible defaults? (port 8080, ctx 32768, threads $nproc_default of $nproc_total cores)"; then
         DEFAULT_PORT=8080
         DEFAULT_CTX=32768
-        DEFAULT_THREADS=10
+        DEFAULT_THREADS=$nproc_default
     else
-        DEFAULT_PORT=$(gum input --header "Port"          --value "8080"  --width 20)
-        DEFAULT_CTX=$(gum input  --header "Context size"  --value "32768" --width 20)
-        DEFAULT_THREADS=$(gum input --header "CPU threads" --value "10"   --width 20)
+        DEFAULT_PORT=$(gum input --header "Port"          --value "8080"           --width 20)
+        DEFAULT_CTX=$(gum input  --header "Context size"  --value "32768"          --width 20)
+        DEFAULT_THREADS=$(gum input --header "CPU threads (system has $nproc_total)" --value "$nproc_default" --width 30)
         DEFAULT_PORT="${DEFAULT_PORT:-8080}"
         DEFAULT_CTX="${DEFAULT_CTX:-32768}"
-        DEFAULT_THREADS="${DEFAULT_THREADS:-10}"
+        DEFAULT_THREADS="${DEFAULT_THREADS:-$nproc_default}"
     fi
     ok "Port $DEFAULT_PORT  |  ctx $DEFAULT_CTX  |  threads $DEFAULT_THREADS"
 }
@@ -223,6 +228,15 @@ DEFAULT_CTX=$DEFAULT_CTX
 DEFAULT_THREADS=$DEFAULT_THREADS
 LLAMA_SERVER="llama-server"
 LLAMA_CLI="llama-cli"
+LLAMA_BENCH="llama-bench"
+
+# Optional: pi --skill directory (used by 'pi-llm pi'). Skipped if missing.
+# PI_SKILL_DIR="$HOME/.claude/skills/agent-browser"
+
+# If you built llama.cpp from source, set absolute paths:
+# LLAMA_SERVER="$HOME/llama.cpp/build/bin/llama-server"
+# LLAMA_CLI="$HOME/llama.cpp/build/bin/llama-cli"
+# LLAMA_BENCH="$HOME/llama.cpp/build/bin/llama-bench"
 EOF
     ok "Wrote $CONFIG_FILE"
 }

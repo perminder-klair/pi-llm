@@ -9,13 +9,22 @@ PI_LLM_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/pi-llm/config"
 # shellcheck source=/dev/null
 [[ -f "$PI_LLM_CONFIG" ]] && source "$PI_LLM_CONFIG"
 
+# Auto-detect threads: nproc minus 2 (leave headroom for OS/UI), floor 1.
+auto_threads() {
+    local n
+    n=$(nproc 2>/dev/null || echo 4)
+    (( n > 2 )) && echo $((n - 2)) || echo 1
+}
+
 MODELS_DIR="${MODELS_DIR:-$HOME/.lmstudio/models}"
 EXTRA_DIR="${EXTRA_DIR:-$MODELS_DIR/extra-models}"
 DEFAULT_PORT="${DEFAULT_PORT:-8080}"
 DEFAULT_CTX="${DEFAULT_CTX:-32768}"
-DEFAULT_THREADS="${DEFAULT_THREADS:-10}"
+DEFAULT_THREADS="${DEFAULT_THREADS:-$(auto_threads)}"
 LLAMA_SERVER="${LLAMA_SERVER:-llama-server}"
 LLAMA_CLI="${LLAMA_CLI:-llama-cli}"
+LLAMA_BENCH="${LLAMA_BENCH:-llama-bench}"
+PI_SKILL_DIR="${PI_SKILL_DIR:-$HOME/.claude/skills/agent-browser}"
 
 RUNDIR="${XDG_RUNTIME_DIR:-/tmp}"
 PIDFILE="$RUNDIR/pi-llm-server.pid"
@@ -335,24 +344,30 @@ do_status() {
 }
 
 do_bench() {
-    require_llama
+    if ! command -v "$LLAMA_BENCH" >/dev/null 2>&1; then
+        gum style --foreground 196 \
+            "'$LLAMA_BENCH' not found. Set LLAMA_BENCH in $PI_LLM_CONFIG to an absolute path, or install llama.cpp's bench tool."
+        return 1
+    fi
     local model_path
     model_path=$(pick_model)
     [[ -z "$model_path" ]] && return
 
     local model_name
     model_name=$(basename "$model_path" .gguf)
+    local out
+    out=$(mktemp)
 
     echo ""
     gum style --foreground 212 "Benchmarking $model_name..."
     echo ""
 
-    gum spin --spinner dot --title "Running benchmark (Vulkan)..." -- \
-        bash -c "cd $HOME/llama.cpp && LD_LIBRARY_PATH=build/bin build/bin/llama-bench -m '$model_path' -ngl 999 -t $DEFAULT_THREADS 2>&1 | grep -E '^\|' > /tmp/llm-bench.txt"
+    gum spin --spinner dot --title "Running llama-bench..." -- \
+        bash -c "$LLAMA_BENCH -m '$model_path' -ngl 999 -t $DEFAULT_THREADS 2>&1 | grep -E '^\|' > '$out'"
 
     echo ""
-    cat /tmp/llm-bench.txt
-    rm -f /tmp/llm-bench.txt
+    cat "$out"
+    rm -f "$out"
 }
 
 # ── Model management ──
@@ -650,9 +665,12 @@ do_pi() {
     echo "Launching pi with $model_name..."
     echo ""
 
+    local skill_args=()
+    [[ -d "$PI_SKILL_DIR" ]] && skill_args=(--skill "$PI_SKILL_DIR")
+
     exec pi --provider llamacpp --model "$model_id" \
         --no-skills --no-extensions \
-        --skill ~/.claude/skills/agent-browser \
+        "${skill_args[@]}" \
         "$@"
 }
 

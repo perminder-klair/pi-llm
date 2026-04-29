@@ -99,17 +99,19 @@ Any value can be overridden:
 MODELS_DIR="$HOME/.lmstudio/models"
 DEFAULT_PORT=8080
 DEFAULT_CTX=32768
-DEFAULT_THREADS=10
+DEFAULT_THREADS=10                  # auto-detected: nproc - 2
 LLAMA_SERVER="llama-server"
 LLAMA_CLI="llama-cli"
+LLAMA_BENCH="llama-bench"
+PI_SKILL_DIR="$HOME/.claude/skills/agent-browser"   # optional, skipped if missing
 ```
 
-Source builds: if `llama-server` isn't on `$PATH`, point `LLAMA_SERVER` at the
-absolute path:
+Source builds: if the binaries aren't on `$PATH`, point them at absolute paths:
 
 ```bash
 LLAMA_SERVER="$HOME/llama.cpp/build/bin/llama-server"
 LLAMA_CLI="$HOME/llama.cpp/build/bin/llama-cli"
+LLAMA_BENCH="$HOME/llama.cpp/build/bin/llama-bench"
 ```
 
 Re-run `./install.sh` any time — it pre-fills your existing values.

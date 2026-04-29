@@ -5,6 +5,7 @@ import * as p from '@clack/prompts';
 import { loadConfig } from '../config.js';
 import { requireLlama, requirePi } from '../deps.js';
 import { ctxForModel, findFirstMatch, pickModel, scanModels } from '../models.js';
+import { PI_PROVIDER_KEY, ensurePiModelsJson } from '../pi-config.js';
 import { refuseIfPortTaken } from '../preflight.js';
 import {
   launchServer,
@@ -49,7 +50,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
     }
     const modelId = status.model ?? 'local';
     console.log(`Using external server: ${status.url}  (model: ${modelId})`);
-    await runPi(cfg.piSkillDir, modelId, status.url, forward);
+    await runPi(cfg.piSkillDir, modelId, `${status.url}/v1`, cfg.defaultCtx, forward);
     return;
   }
 
@@ -92,7 +93,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
     } else {
       console.log(`Attached server already serving ${model.name}`);
     }
-    await runPi(cfg.piSkillDir, servedModel, status.url, forward);
+    await runPi(cfg.piSkillDir, servedModel, `${status.url}/v1`, cfg.defaultCtx, forward);
     return;
   }
 
@@ -134,15 +135,28 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
     console.log('Server ready.');
   }
 
-  await runPi(cfg.piSkillDir, basename(model.path), `http://127.0.0.1:${port}`, forward);
+  await runPi(
+    cfg.piSkillDir,
+    basename(model.path),
+    `http://127.0.0.1:${port}/v1`,
+    ctx,
+    forward,
+  );
 }
 
 async function runPi(
   piSkillDir: string | undefined,
   modelId: string,
   baseUrl: string,
+  contextWindow: number,
   forward: string[],
 ): Promise<void> {
+  // Pi 0.70+ requires custom OpenAI-compatible servers to be registered
+  // via ~/.pi/agent/models.json (the older `--provider llamacpp` was
+  // removed). We write/update the entry every time so the model id and
+  // baseUrl always match whatever's actually running.
+  ensurePiModelsJson(modelId, baseUrl, contextWindow);
+
   console.log(`Launching pi with ${modelId}...`);
   console.log();
 
@@ -157,29 +171,16 @@ async function runPi(
     }
   }
 
-  // pi takes --base-url for non-default servers; it always reads the URL from
-  // the provider config. For now we rely on `pi --provider llamacpp` and
-  // assume the user keeps pi pointed at the same port pi-llm uses, which is
-  // the same port that's running.
   const piArgs = [
-    '--provider',
-    'llamacpp',
     '--model',
-    modelId,
+    `${PI_PROVIDER_KEY}/${modelId}`,
     '--no-skills',
     '--no-extensions',
     ...skillArgs,
     ...forward,
   ];
 
-  const child = spawn('pi', piArgs, {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      // Some pi versions read base URL from this env var; harmless if ignored.
-      LLAMACPP_BASE_URL: baseUrl,
-    },
-  });
+  const child = spawn('pi', piArgs, { stdio: 'inherit' });
   await new Promise<void>((resolve) => {
     child.on('exit', (code) => {
       process.exitCode = code ?? 0;

@@ -5,6 +5,7 @@ import * as p from '@clack/prompts';
 import { loadConfig } from '../config.js';
 import { requireLlama, requirePi } from '../deps.js';
 import { ctxForModel, findFirstMatch, pickModel, scanModels } from '../models.js';
+import { refuseIfPortTaken } from '../preflight.js';
 import {
   launchServer,
   serverStatus,
@@ -110,6 +111,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
   const ctx = ctxForModel(model.name);
 
   if (!status.running) {
+    await refuseIfPortTaken(port);
     console.log(`Starting ${model.name} on port ${port} (ctx ${ctx})...`);
     launchServer({
       llamaServer: cfg.llamaServer,

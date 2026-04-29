@@ -1,5 +1,6 @@
 import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { existsSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createConnection } from 'node:net';
 import { join } from 'node:path';
 import type { Config } from './types.js';
 
@@ -36,6 +37,61 @@ export type ServerStatus =
       pid?: number;
       model?: string;
     };
+
+/**
+ * Quick TCP-connect check: is anything listening on the port?
+ * Works without HTTP — used to distinguish "port free" from "port taken by
+ * a non-llama service" (the probe-via-/health check can't tell them apart
+ * since both return alive=false).
+ */
+export function isPortInUse(
+  port: number,
+  host = '127.0.0.1',
+  timeoutMs = 500,
+): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = createConnection({ port, host, timeout: timeoutMs });
+    let settled = false;
+    const done = (v: boolean) => {
+      if (settled) return;
+      settled = true;
+      try {
+        socket.destroy();
+      } catch {
+        // ignore
+      }
+      resolve(v);
+    };
+    socket.once('connect', () => done(true));
+    socket.once('error', () => done(false));
+    socket.once('timeout', () => done(false));
+  });
+}
+
+/**
+ * Best-effort identification of whatever HTTP service is on `port`. Tries
+ * the Server header and a `<title>` from the root document. Returns null
+ * if the port isn't HTTP or we can't tell.
+ */
+export async function describePortOccupant(
+  port: number,
+  host = '127.0.0.1',
+): Promise<string | null> {
+  try {
+    const r = await fetch(`http://${host}:${port}/`, {
+      signal: AbortSignal.timeout(1000),
+      redirect: 'manual',
+    });
+    const server = r.headers.get('server');
+    if (server) return server;
+    const text = await r.text();
+    const m = text.match(/<title>([^<]{1,80})<\/title>/i);
+    if (m) return m[1]!.trim();
+  } catch {
+    // not HTTP or doesn't respond
+  }
+  return null;
+}
 
 /**
  * Probe a server's `/health` endpoint, optionally also fetching

@@ -2,6 +2,7 @@ import * as p from '@clack/prompts';
 import { loadConfig } from '../config.js';
 import { requireLlama } from '../deps.js';
 import { pickModel, scanModels } from '../models.js';
+import { refuseIfPortTaken } from '../preflight.js';
 import { launchServer, serverStatus, stopServer, waitReady } from '../server.js';
 import type { Model } from '../types.js';
 import { exitIfCancelled, pc } from '../ui.js';
@@ -86,6 +87,8 @@ export async function serve(): Promise<void> {
     exitIfCancelled(threadsIn);
     threads = parseInt(threadsIn, 10) || cfg.defaultThreads;
   }
+
+  await refuseIfPortTaken(port);
 
   printStartupBanner(model, port, ctx);
 

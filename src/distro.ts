@@ -86,7 +86,7 @@ export function llamaInstallHint(d: Distro = detectDistro()): LlamaInstallHint {
         detected: 'Debian',
         packageLines: [],
         sourceDepsLine:
-          'sudo apt install -y cmake build-essential pkg-config libvulkan-dev glslang-tools libcurl4-openssl-dev',
+          'sudo apt install -y cmake build-essential pkg-config libvulkan-dev glslc glslang-tools libcurl4-openssl-dev',
         cmakeBackend: '-DGGML_VULKAN=ON',
         backendLabel: 'Vulkan',
       };
@@ -95,7 +95,7 @@ export function llamaInstallHint(d: Distro = detectDistro()): LlamaInstallHint {
         detected: 'Ubuntu',
         packageLines: [],
         sourceDepsLine:
-          'sudo apt install -y cmake build-essential pkg-config libvulkan-dev glslang-tools libcurl4-openssl-dev',
+          'sudo apt install -y cmake build-essential pkg-config libvulkan-dev glslc glslang-tools libcurl4-openssl-dev',
         cmakeBackend: '-DGGML_VULKAN=ON',
         backendLabel: 'Vulkan',
       };

@@ -171,16 +171,42 @@ check_pi() {
         ok "pi found: $(command -v pi)"
         return 0
     fi
-    note "pi is optional — required only for the 'pi-llm pi' subcommand."
-    note "Install instructions vary by distribution method (mise / npm / cargo /"
-    note "  manual). See https://github.com/block/pi or your preferred source."
-    if gum confirm --default=no "Try installing pi via mise (npm:pi-cli)?"; then
-        if have mise; then
-            mise use -g npm:pi-cli || warn "mise install failed — install pi manually."
-        else
-            warn "mise not installed. Skipping. Install pi manually if you need it."
+    note "pi powers the 'pi-llm pi' coding-agent subcommand."
+    note "Project: https://pi.dev  |  Source: https://github.com/badlogic/pi-mono"
+    if ! gum confirm --default=yes "Install pi now?"; then
+        note "Skipped. To install manually later:"
+        note "  npm install -g @mariozechner/pi-coding-agent"
+        return 0
+    fi
+
+    local pkg="@mariozechner/pi-coding-agent"
+
+    # Prefer mise (isolated tool versions) → fall back to npm → fall back to hints.
+    if have mise; then
+        if mise use -g "npm:$pkg"; then
+            ok "Installed via mise"
+            return 0
+        fi
+        warn "mise install failed, trying npm..."
+    fi
+
+    if have npm; then
+        if npm install -g "$pkg"; then
+            ok "Installed via npm"
+            return 0
+        fi
+        warn "npm install failed (may need sudo or a Node version manager)."
+    else
+        warn "Neither mise nor npm found."
+        if is_arch && gum confirm --default=yes "Install nodejs-lts + npm via pacman?"; then
+            sudo pacman -S --needed nodejs-lts npm && \
+                npm install -g "$pkg" && \
+                ok "Installed pi via npm" && return 0
         fi
     fi
+
+    note "Manual install command:"
+    note "  npm install -g $pkg"
 }
 
 # ── 7. Write config file ───────────────────────────────────────────────

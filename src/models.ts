@@ -99,11 +99,33 @@ export function findFirstMatch(models: Model[], pattern: string): Model | null {
 //
 // The size-class regexes use word-boundary-ish anchors so e.g. "Qwen3.5-9B"
 // doesn't accidentally match "32B". Order matters — bigger sizes first.
-export function ctxForModel(name: string): number {
-  if (/A3B|MoE|moe/i.test(name)) return 131072;
-  if (/(?<![0-9])(35B|32B|30B)(?![0-9])/.test(name)) return 65536;
-  if (/(?<![0-9])(27B|24B|22B)(?![0-9])/.test(name)) return 32768;
-  if (/(?<![0-9])(14B|13B|12B)(?![0-9])/.test(name)) return 65536;
-  if (/(?<![0-9])([3-9]B|7B)(?![0-9])/.test(name)) return 131072;
-  return 32768;
+//
+// `vramBudgetMB`, when provided, caps the result so a small GPU doesn't
+// OOM on the 128k default. It's a tier ceiling, not a precise estimate —
+// see `ctxCapForBudget()`.
+export function ctxForModel(name: string, vramBudgetMB?: number): number {
+  let ctx: number;
+  if (/A3B|MoE|moe/i.test(name)) ctx = 131072;
+  else if (/(?<![0-9])(35B|32B|30B)(?![0-9])/.test(name)) ctx = 65536;
+  else if (/(?<![0-9])(27B|24B|22B)(?![0-9])/.test(name)) ctx = 32768;
+  else if (/(?<![0-9])(14B|13B|12B)(?![0-9])/.test(name)) ctx = 65536;
+  else if (/(?<![0-9])([3-9]B|7B)(?![0-9])/.test(name)) ctx = 131072;
+  else ctx = 32768;
+
+  const cap = ctxCapForBudget(vramBudgetMB);
+  return cap !== undefined && ctx > cap ? cap : ctx;
+}
+
+// Conservative ceiling for the auto-picked ctx given a VRAM budget. The
+// numbers assume the server's q8_0 KV-cache defaults — they're meant to
+// keep load-time OOM at bay on smaller GPUs, not to maximise utilisation.
+// Users who want more can set `defaultCtx` explicitly or pass ctx to
+// `pi-llm serve`.
+export function ctxCapForBudget(vramBudgetMB?: number): number | undefined {
+  if (!vramBudgetMB || vramBudgetMB <= 0) return undefined;
+  if (vramBudgetMB <= 6 * 1024) return 8192;
+  if (vramBudgetMB <= 8 * 1024) return 16384;
+  if (vramBudgetMB <= 12 * 1024) return 32768;
+  if (vramBudgetMB <= 16 * 1024) return 65536;
+  return 131072;
 }

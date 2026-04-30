@@ -109,7 +109,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
   }
 
   const port = cfg.defaultPort;
-  const ctx = ctxForModel(model.name);
+  const ctx = ctxForModel(model.name, cfg.vramBudgetMB);
 
   if (!status.running) {
     await refuseIfPortTaken(port);

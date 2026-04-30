@@ -100,12 +100,17 @@ export async function runSetup(): Promise<void> {
     threads = parseInt(threadsIn, 10) || threadDefault;
   }
 
+  // VRAM budget — caps auto-picked ctx so small GPUs don't OOM on 128k.
+  // Stored in MB; `undefined` means no cap (current behaviour).
+  const vramBudgetMB = await promptForVramBudget(existing.vramBudgetMB);
+
   saveConfig({
     modelsDir,
     defaultPort: port,
     defaultCtx: ctx,
     defaultThreads: threads,
     serverUrl,
+    vramBudgetMB,
   });
   p.log.success(`Wrote ${CONFIG_FILE}`);
 
@@ -130,6 +135,26 @@ export async function runSetup(): Promise<void> {
   }
 
   p.outro(pc.green('Setup complete. Run `pi-llm` to get started.'));
+}
+
+async function promptForVramBudget(
+  existing: number | undefined,
+): Promise<number | undefined> {
+  const initial = existing ?? 0;
+  const choice = await p.select<number>({
+    message: 'Approximate VRAM budget? (caps auto-picked context window)',
+    initialValue: initial,
+    options: [
+      { value: 0, label: 'Skip / unlimited', hint: 'no cap on auto-picked ctx' },
+      { value: 6 * 1024, label: '6 GB', hint: 'caps ctx to 8k' },
+      { value: 8 * 1024, label: '8 GB', hint: 'caps ctx to 16k' },
+      { value: 12 * 1024, label: '12 GB', hint: 'caps ctx to 32k' },
+      { value: 16 * 1024, label: '16 GB', hint: 'caps ctx to 64k (Strix Halo class)' },
+      { value: 24 * 1024, label: '24 GB or more', hint: 'no cap (full 128k)' },
+    ],
+  });
+  exitIfCancelled(choice);
+  return choice > 0 ? choice : undefined;
 }
 
 async function promptForExternalServer(

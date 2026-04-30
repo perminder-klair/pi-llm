@@ -14,6 +14,13 @@ export interface Config {
    * like `serve`, `stop`, `logs` are disabled in this mode.
    */
   serverUrl?: string;
+  /**
+   * Approximate VRAM budget in MB. Caps the context window that
+   * `ctxForModel()` auto-picks per model so 128k defaults don't OOM on
+   * smaller GPUs. Does NOT override an explicit `defaultCtx` or a ctx
+   * the user types into `pi-llm serve`. Leave unset for no cap.
+   */
+  vramBudgetMB?: number;
 }
 
 export interface Model {

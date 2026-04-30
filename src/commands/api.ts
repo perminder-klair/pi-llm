@@ -1,6 +1,7 @@
 import { loadConfig } from '../config.js';
 import { serverStatus } from '../server.js';
 import { pc } from '../ui.js';
+import { networkAddresses } from '../util.js';
 
 /** `pi-llm api` — print OpenAI-compatible connection info for the local server. */
 export async function api(): Promise<void> {
@@ -49,6 +50,25 @@ export async function api(): Promise<void> {
   }
   console.log();
   console.log(`  Base URL    ${pc.cyan(baseUrl)}`);
+
+  // If we're talking to a local server, advertise any LAN / Tailscale IPs
+  // that actually respond on the same port — saves the user from `ip a`
+  // and a manual probe when pointing a phone or another machine at it.
+  const isLocal = /\/\/(127\.0\.0\.1|localhost)\b/.test(baseUrl);
+  if (live && isLocal) {
+    const reachable = await probeReachableUrls(port);
+    if (reachable.lan.length || reachable.tailscale.length) {
+      console.log();
+      console.log(`  ${pc.dim('Also reachable at:')}`);
+      for (const ip of reachable.lan) {
+        console.log(`    LAN          ${pc.cyan(`http://${ip}:${port}/v1`)}`);
+      }
+      for (const ip of reachable.tailscale) {
+        console.log(`    Tailscale    ${pc.cyan(`http://${ip}:${port}/v1`)}`);
+      }
+    }
+  }
+
   console.log(`  Model name  ${pc.cyan(modelName)}`);
   console.log(`  API key     any non-empty string (e.g. "unused") — not validated`);
   console.log(`              unless server was started with --api-key`);
@@ -73,6 +93,29 @@ export async function api(): Promise<void> {
     `      -d '{"model":"${modelName}","messages":[{"role":"user","content":"Hello!"}]}'`,
   );
   console.log();
-  // Suppress unused-var on `port` — exposed in case future output wants it.
-  void port;
+}
+
+async function probeReachableUrls(
+  port: number,
+): Promise<{ lan: string[]; tailscale: string[] }> {
+  const addrs = networkAddresses();
+  const probe = async (ip: string): Promise<string | null> => {
+    try {
+      const r = await fetch(`http://${ip}:${port}/health`, {
+        signal: AbortSignal.timeout(800),
+      });
+      return r.ok ? ip : null;
+    } catch {
+      return null;
+    }
+  };
+  const [lan, tailscale] = await Promise.all([
+    Promise.all(addrs.lan.map(probe)).then((arr) =>
+      arr.filter((x): x is string => x !== null),
+    ),
+    Promise.all(addrs.tailscale.map(probe)).then((arr) =>
+      arr.filter((x): x is string => x !== null),
+    ),
+  ]);
+  return { lan, tailscale };
 }

@@ -1,5 +1,5 @@
 import { statSync } from 'node:fs';
-import { cpus, homedir } from 'node:os';
+import { cpus, homedir, networkInterfaces } from 'node:os';
 import { join } from 'node:path';
 
 export function autoThreads(): number {
@@ -49,4 +49,43 @@ export function formatGB(bytes: number): string {
 
 export function formatMB(bytes: number): string {
   return Math.round(bytes / 1024 / 1024).toString();
+}
+
+export interface ExternalAddresses {
+  lan: string[];
+  tailscale: string[];
+}
+
+/**
+ * Enumerate the host's non-loopback IPv4 addresses, classifying each as
+ * either a LAN address or a Tailscale address. Useful for showing "also
+ * reachable at" URLs when the llama-server binds 0.0.0.0.
+ *
+ * Tailscale detection: interface name (`tailscale*`) on Linux/Windows, plus
+ * the 100.64.0.0/10 CGNAT range that catches macOS's `utunN` interfaces.
+ *
+ * Skipped: docker / podman / virtual bridges / VPN tunnels we don't
+ * recognise — these usually aren't useful for clients to connect to.
+ */
+export function networkAddresses(): ExternalAddresses {
+  const skip = /^(docker|br-|podman|veth|cni|virbr|flannel|vmnet|lxc|lxdbr|wg)/;
+  const lan: string[] = [];
+  const tailscale: string[] = [];
+
+  for (const [name, addrs] of Object.entries(networkInterfaces())) {
+    if (!addrs || skip.test(name)) continue;
+    for (const a of addrs) {
+      if (a.internal || a.family !== 'IPv4') continue;
+      const [o1, o2] = a.address.split('.').map(Number);
+      const isCgnat = o1 === 100 && (o2 ?? 0) >= 64 && (o2 ?? 0) <= 127;
+      const isTailscale = name.startsWith('tailscale') || isCgnat;
+      if (isTailscale) tailscale.push(a.address);
+      else lan.push(a.address);
+    }
+  }
+
+  return {
+    lan: [...new Set(lan)],
+    tailscale: [...new Set(tailscale)],
+  };
 }

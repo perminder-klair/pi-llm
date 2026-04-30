@@ -9,6 +9,8 @@
   "files": [
     "bin",
     "dist",
+    ".claude/skills",
+    "CLAUDE.md",
     "README.md",
     "LICENSE"
   ],
@@ -16,7 +18,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "tsc",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc",
     "dev": "tsc --watch",
     "start": "node bin/pi-llm",
     "prepublishOnly": "npm run build"

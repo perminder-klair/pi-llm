@@ -7,12 +7,19 @@
   <meta name="description" content="A TUI for llama.cpp. Auto-tuned for iGPUs. Talks to pi, curl, or anything OpenAI-compatible. Install with one npm command." />
   <meta name="theme-color" content="#0b0d10" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-  <meta property="og:title" content="locca — run local LLMs with one command" />
-  <meta property="og:description" content="A TUI for llama.cpp. Auto-tuned for iGPUs. Talks to pi, curl, or anything OpenAI-compatible." />
+  <meta property="og:title" content="locca — run pi locally" />
+  <meta property="og:description" content="A TUI for llama.cpp. Run the pi coding agent on your own GPU. Download, switch, repeat." />
   <meta property="og:type" content="website" />
-  <meta name="twitter:card" content="summary" />
+  <meta property="og:image" content="og.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="locca — run pi locally. Download, switch, repeat." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="og.png" />
+  <meta name="twitter:image:alt" content="locca — run pi locally. Download, switch, repeat." />
   <style>
     :root {
+      color-scheme: dark;
       --bg: #0b0d10;
       --bg-soft: #11141a;
       --bg-soft-2: #161a21;
@@ -45,6 +52,8 @@
       line-height: 1.55;
       -webkit-font-smoothing: antialiased;
       text-rendering: optimizeLegibility;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
       background-image:
         radial-gradient(1200px 600px at 80% -10%, rgba(245, 165, 36, 0.06), transparent 60%),
         radial-gradient(900px 500px at -10% 20%, rgba(94, 234, 212, 0.05), transparent 60%);
@@ -63,8 +72,25 @@
     .wrap {
       max-width: var(--max);
       margin: 0 auto;
-      padding: 0 var(--gutter);
+      padding-left: max(var(--gutter), env(safe-area-inset-left));
+      padding-right: max(var(--gutter), env(safe-area-inset-right));
     }
+
+    .skip {
+      position: absolute;
+      left: -9999px;
+      top: 0;
+      z-index: 100;
+      background: var(--amber);
+      color: var(--bg);
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 10px 14px;
+      border-radius: 0 0 8px 0;
+    }
+    .skip:focus { left: 0; }
+
+    [id] { scroll-margin-top: 80px; }
 
     /* ---------- nav ---------- */
     .nav {
@@ -140,13 +166,23 @@
       margin-bottom: 24px;
     }
     .pill .pulse {
+      position: relative;
       width: 6px; height: 6px; border-radius: 999px; background: var(--teal);
-      box-shadow: 0 0 0 0 var(--teal-soft);
-      animation: pulse 2.4s ease-in-out infinite;
+    }
+    .pill .pulse::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: var(--teal);
+      opacity: 0.4;
+      transform-origin: center;
+      animation: pulse 2.4s ease-out infinite;
+      will-change: transform, opacity;
     }
     @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 var(--teal-soft); }
-      50% { box-shadow: 0 0 0 8px transparent; }
+      0%   { transform: scale(1);   opacity: 0.5; }
+      100% { transform: scale(3.2); opacity: 0;   }
     }
     h1.headline {
       font-family: var(--sans);
@@ -155,6 +191,7 @@
       letter-spacing: -0.025em;
       font-weight: 700;
       margin: 0 0 18px;
+      text-wrap: balance;
     }
     .headline em {
       font-style: normal;
@@ -246,7 +283,8 @@
       font-size: 12px;
       color: var(--fg-faint);
     }
-    .meta-row span { display: inline-flex; align-items: center; gap: 6px; }
+    .meta-row { list-style: none; padding: 0; }
+    .meta-row li { display: inline-flex; align-items: center; gap: 6px; }
     .meta-row .k { color: var(--teal); }
 
     /* ---------- terminal ---------- */
@@ -347,12 +385,14 @@
       letter-spacing: -0.02em;
       line-height: 1.15;
       margin: 0 0 16px;
+      text-wrap: balance;
     }
     .section-lede {
       color: var(--fg-mute);
       max-width: 640px;
       font-size: 17px;
       margin: 0 0 44px;
+      text-wrap: pretty;
     }
 
     /* ---------- features ---------- */
@@ -426,6 +466,13 @@
       font-size: 12px;
       color: var(--fg-faint);
     }
+    .panel-head h3 {
+      margin: 0;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--fg-faint);
+      letter-spacing: 0;
+    }
     .panel-head .tag {
       color: var(--teal);
       background: var(--teal-soft);
@@ -443,6 +490,7 @@
       font-size: 13.5px;
       padding: 6px 0;
       align-items: baseline;
+      font-variant-numeric: tabular-nums;
     }
     .bench-line .label { color: var(--fg-mute); }
     .bench-line .num { color: var(--amber); font-weight: 600; text-align: right; }
@@ -459,6 +507,7 @@
       font-family: var(--mono);
       font-size: 13px;
       color: var(--fg-mute);
+      font-variant-numeric: tabular-nums;
     }
     .bench-translate ul { margin: 8px 0 0; padding-left: 18px; }
     .bench-translate li { margin-bottom: 2px; }
@@ -469,6 +518,7 @@
       border-collapse: collapse;
       font-family: var(--mono);
       font-size: 13.5px;
+      font-variant-numeric: tabular-nums;
     }
     .ctx-table th, .ctx-table td {
       padding: 11px 4px;
@@ -487,6 +537,8 @@
 
     /* ---------- commands ---------- */
     .cmd-grid {
+      list-style: none;
+      margin: 0;
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 10px 28px;
@@ -502,6 +554,7 @@
       gap: 14px;
       padding: 8px 0;
       border-bottom: 1px dashed var(--line);
+      min-width: 0;
     }
     .cmd-row:last-child, .cmd-grid > .cmd-row:nth-last-child(-n+2) { border-bottom: 0; }
     .cmd-row code {
@@ -515,26 +568,8 @@
       color: var(--fg-mute);
       font-size: 14px;
       line-height: 1.45;
+      min-width: 0;
     }
-
-    /* ---------- hardware grid ---------- */
-    .hw-grid {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 10px;
-    }
-    @media (max-width: 760px) { .hw-grid { grid-template-columns: repeat(2, 1fr); } }
-    .hw-cell {
-      background: var(--bg-soft);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 18px 16px;
-      text-align: center;
-      font-family: var(--mono);
-      font-size: 13px;
-    }
-    .hw-cell .name { color: var(--fg); font-weight: 600; font-size: 14px; display: block; margin-bottom: 4px; }
-    .hw-cell .sub { color: var(--fg-faint); font-size: 12px; }
 
     /* ---------- install section ---------- */
     .install-grid {
@@ -600,7 +635,7 @@
     @media (max-width: 760px) {
       .callout { grid-template-columns: 1fr; }
     }
-    .callout h3 {
+    .callout h2 {
       margin: 0 0 8px;
       font-size: 22px;
       letter-spacing: -0.015em;
@@ -645,52 +680,46 @@
   </style>
 </head>
 <body>
+  <a class="skip" href="#main">Skip to content</a>
   <header class="nav">
     <div class="wrap nav-inner">
-      <a href="#" class="brand" aria-label="locca home">locca<span class="dot">.</span></a>
+      <a href="#main" class="brand" aria-label="locca home" translate="no">locca<span class="dot">.</span></a>
       <nav class="nav-links" aria-label="primary">
         <a href="#features">Features</a>
         <a href="#commands">Commands</a>
         <a href="#install">Install</a>
-        <a class="gh" href="https://github.com/perminder-klair/locca" target="_blank" rel="noopener">GitHub →</a>
+        <a class="gh" href="https://github.com/perminder-klair/locca" target="_blank" rel="noopener noreferrer">GitHub →</a>
       </nav>
     </div>
   </header>
 
-  <main>
+  <main id="main">
     <!-- ============ HERO ============ -->
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-grid">
         <div>
           <span class="pill"><span class="pulse" aria-hidden="true"></span> Local-first · MIT · v0.1.0</span>
           <h1 id="hero-title" class="headline">
-            Run local LLMs<br />with <em>one command</em>.
+            Run pi locally.<br />Download, <em>switch</em>, repeat.
           </h1>
           <p class="lede">
-            <strong>locca</strong> is a TUI for <code>llama.cpp</code>. Sensible
-            defaults baked in, auto-tuned context per model, OpenAI-compatible
-            on the wire — and a one-keystroke launch into the
-            <a href="https://pi.dev" target="_blank" rel="noopener" style="color:var(--teal)">pi</a>
-            coding agent against your own GPU.
+            <strong translate="no">locca</strong> runs the
+            <a href="https://pi.dev" target="_blank" rel="noopener noreferrer" style="color:var(--teal)">pi</a>
+            coding agent against a <code translate="no">llama.cpp</code> server on your own
+            machine. Download a GGUF, switch models with one command, and
+            point any OpenAI-compatible client at it.
           </p>
 
           <div class="cta-row">
             <div class="install" role="group" aria-label="install command">
               <span class="prompt" aria-hidden="true">$</span>
-              <span class="cmd" id="installCmd">npm install -g locca</span>
+              <span class="cmd" id="installCmd" translate="no">npm install -g locca</span>
               <button id="copyInstall" type="button" aria-label="copy install command">Copy</button>
             </div>
-            <a class="btn-ghost" href="https://github.com/perminder-klair/locca" target="_blank" rel="noopener">
+            <a class="btn-ghost" href="https://github.com/perminder-klair/locca" target="_blank" rel="noopener noreferrer">
               <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2 .37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
               View on GitHub
             </a>
-          </div>
-
-          <div class="meta-row" aria-label="key facts">
-            <span><span class="k">▸</span> linux & macOS</span>
-            <span><span class="k">▸</span> vulkan · metal · cuda · rocm</span>
-            <span><span class="k">▸</span> openai-compatible</span>
-            <span><span class="k">▸</span> zero config</span>
           </div>
         </div>
 
@@ -727,9 +756,9 @@
         <p class="eyebrow">Why locca</p>
         <h2 id="features-title">Defaults that respect your hardware.</h2>
         <p class="section-lede">
-          Most local-LLM tools either hide llama.cpp behind a wrapper or expose
-          every flag at once. locca picks defaults that actually work on
-          shared-VRAM iGPUs — and gets out of your way.
+          Most local-LLM tools either hide llama.cpp behind a wrapper or
+          expose every flag at once. locca ships defaults that actually
+          work on shared-VRAM iGPUs.
         </p>
 
         <div class="features">
@@ -737,24 +766,24 @@
             <div class="glyph" aria-hidden="true">⌁</div>
             <h3>Tuned out of the box</h3>
             <p>
-              Vulkan, <code>--flash-attn on</code>, <code>q8_0</code> KV cache,
-              <code>--parallel 1</code>, <code>--batch-size 1024</code>,
-              <code>--jinja</code>. A 7–9B model at 128k context fits on a
-              16 GB shared-VRAM iGPU.
+              Vulkan, <code translate="no">--flash-attn on</code>, <code translate="no">q8_0</code> KV cache,
+              <code translate="no">--parallel 1</code>, <code translate="no">--batch-size 1024</code>,
+              <code translate="no">--jinja</code>. A 7–9B model at 128k context fits on a
+              16&nbsp;GB shared-VRAM iGPU.
             </p>
           </div>
           <div class="feature">
             <div class="glyph" aria-hidden="true">⤬</div>
             <h3>Auto context per model</h3>
             <p>
-              <code>ctxForModel()</code> reads the model name and picks a sane
-              ctx — 128k for MoE & 7–9B, scaled down for dense 12–35B. One
+              <code translate="no">ctxForModel()</code> reads the model name and picks a sane
+              ctx — 128k for MoE &amp; 7–9B, scaled down for dense 12–35B. One
               regex away from tuning for your VRAM.
             </p>
           </div>
           <div class="feature">
             <div class="glyph" aria-hidden="true">⌘</div>
-            <h3>Composes, doesn't capture</h3>
+            <h3>Composes, doesn’t capture</h3>
             <p>
               Detects <span style="color:var(--teal)">attached</span> and
               <span style="color:var(--teal)">external</span> llama-servers
@@ -772,16 +801,16 @@
         <p class="eyebrow">The numbers</p>
         <h2 id="show-title">Speed you can read at a glance.</h2>
         <p class="section-lede">
-          <code style="font-family:var(--mono);color:var(--amber)">locca bench</code>
-          wraps <code style="font-family:var(--mono)">llama-bench</code> and
-          translates raw tok/s into "how long until I see a reply" — the
-          number you actually feel.
+          <code translate="no" style="font-family:var(--mono);color:var(--amber)">locca bench</code>
+          wraps <code translate="no" style="font-family:var(--mono)">llama-bench</code> and
+          answers the only question that matters: how long until you see
+          a reply.
         </p>
 
         <div class="showcase">
           <div class="panel">
             <div class="panel-head">
-              <span>locca bench · qwen2.5-coder-7b · q4_k_m</span>
+              <h3 translate="no">locca bench · qwen2.5-coder-7b · q4_k_m</h3>
               <span class="tag">live</span>
             </div>
             <div class="panel-body">
@@ -800,9 +829,9 @@
               <div class="bench-translate">
                 Translates to:
                 <ul>
-                  <li>200-token reply <b>10.9 s</b></li>
-                  <li>2 000-token reply <b>1m 49s</b></li>
-                  <li>1 000-token prompt eval <b>4.3 s</b> &nbsp;<span style="color:var(--fg-faint)">(time-to-first-token)</span></li>
+                  <li>200-token reply <b>10.9&nbsp;s</b></li>
+                  <li>2 000-token reply <b>1m&nbsp;49s</b></li>
+                  <li>1 000-token prompt eval <b>4.3&nbsp;s</b> &nbsp;<span style="color:var(--fg-faint)">(time-to-first-token)</span></li>
                 </ul>
               </div>
             </div>
@@ -810,8 +839,8 @@
 
           <div class="panel">
             <div class="panel-head">
-              <span>auto context per model class</span>
-              <span class="tag">ctxForModel()</span>
+              <h3>Auto context per model class</h3>
+              <span class="tag" translate="no">ctxForModel()</span>
             </div>
             <div class="panel-body">
               <table class="ctx-table" aria-label="auto-context table">
@@ -837,46 +866,65 @@
     <section id="commands" aria-labelledby="cmd-title">
       <div class="wrap">
         <p class="eyebrow">Surface</p>
-        <h2 id="cmd-title">A small set of commands. Each one earns its place.</h2>
+        <h2 id="cmd-title">A small set of commands.</h2>
         <p class="section-lede">
-          Run <code style="font-family:var(--mono);color:var(--amber)">locca</code>
+          Run <code translate="no" style="font-family:var(--mono);color:var(--amber)">locca</code>
           with no args for the menu, or jump straight to what you need.
         </p>
 
-        <div class="cmd-grid" role="list">
-          <div class="cmd-row" role="listitem"><code>locca pi</code><span>Launch the pi coding agent against your local server.</span></div>
-          <div class="cmd-row" role="listitem"><code>locca serve</code><span>Start <code style="font-family:var(--mono)">llama-server</code> with a picked model, detached.</span></div>
-          <div class="cmd-row" role="listitem"><code>locca switch</code><span>Stop current server, start a new model with pi.</span></div>
-          <div class="cmd-row" role="listitem"><code>locca bench</code><span>Run llama-bench with a friendlier summary.</span></div>
-          <div class="cmd-row" role="listitem"><code>locca status</code><span>Server, llama.cpp, and models summary.</span></div>
-          <div class="cmd-row" role="listitem"><code>locca api</code><span>Print OpenAI-compatible connection info + LAN URLs.</span></div>
-          <div class="cmd-row" role="listitem"><code>locca logs</code><span>Tail the server log (locca-spawned servers only).</span></div>
-          <div class="cmd-row" role="listitem"><code>locca download</code><span>Pull a GGUF from HuggingFace into your models dir.</span></div>
-          <div class="cmd-row" role="listitem"><code>locca search</code><span>Fuzzy-search HuggingFace for GGUF models.</span></div>
-          <div class="cmd-row" role="listitem"><code>locca delete</code><span>Remove a model directory you no longer need.</span></div>
-          <div class="cmd-row" role="listitem"><code>locca stop</code><span>Stop the running server.</span></div>
-          <div class="cmd-row" role="listitem"><code>locca setup</code><span>Re-run the setup wizard.</span></div>
-        </div>
+        <ul class="cmd-grid">
+          <li class="cmd-row"><code translate="no">locca pi</code><span>Launch the pi coding agent against your local server.</span></li>
+          <li class="cmd-row"><code translate="no">locca serve</code><span>Start <code translate="no" style="font-family:var(--mono)">llama-server</code> with a picked model, detached.</span></li>
+          <li class="cmd-row"><code translate="no">locca switch</code><span>Stop current server, start a new model with pi.</span></li>
+          <li class="cmd-row"><code translate="no">locca bench</code><span>Run llama-bench with a friendlier summary.</span></li>
+          <li class="cmd-row"><code translate="no">locca status</code><span>Server, llama.cpp, and models summary.</span></li>
+          <li class="cmd-row"><code translate="no">locca api</code><span>Print OpenAI-compatible connection info + LAN URLs.</span></li>
+          <li class="cmd-row"><code translate="no">locca logs</code><span>Tail the server log (locca-spawned servers only).</span></li>
+          <li class="cmd-row"><code translate="no">locca download</code><span>Pull a GGUF from HuggingFace into your models dir.</span></li>
+          <li class="cmd-row"><code translate="no">locca search</code><span>Fuzzy-search HuggingFace for GGUF models.</span></li>
+          <li class="cmd-row"><code translate="no">locca delete</code><span>Remove a model directory you no longer need.</span></li>
+          <li class="cmd-row"><code translate="no">locca stop</code><span>Stop the running server.</span></li>
+          <li class="cmd-row"><code translate="no">locca setup</code><span>Re-run the setup wizard.</span></li>
+        </ul>
       </div>
     </section>
 
-    <!-- ============ HARDWARE ============ -->
-    <section aria-labelledby="hw-title">
+    <!-- ============ AGENT SKILL ============ -->
+    <section id="skill" aria-labelledby="skill-title">
       <div class="wrap">
-        <p class="eyebrow">Reach</p>
-        <h2 id="hw-title">Works wherever <span style="color:var(--amber)">llama.cpp</span> works.</h2>
+        <p class="eyebrow">Bundled</p>
+        <h2 id="skill-title">A skill your AI editor can lean on.</h2>
         <p class="section-lede">
-          locca doesn't reimplement inference — it drives the binary you
-          already trust. That means every backend llama.cpp ships with is
-          a first-class citizen here.
+          locca ships an agent skill at
+          <code translate="no" style="font-family:var(--mono)">.claude/skills/llama-cpp-manage/</code>.
+          Your coding agent reads it when you hit llama.cpp install pain,
+          server startup failures, port conflicts, or pi integration
+          issues. It covers per-distro install matrices, GPU backend
+          selection, <code translate="no" style="font-family:var(--mono)">/health</code>
+          diagnostics, and a one-shot diagnose script.
         </p>
 
-        <div class="hw-grid">
-          <div class="hw-cell"><span class="name">Vulkan</span><span class="sub">AMD · Intel · iGPU</span></div>
-          <div class="hw-cell"><span class="name">Metal</span><span class="sub">Apple Silicon</span></div>
-          <div class="hw-cell"><span class="name">CUDA</span><span class="sub">NVIDIA discrete</span></div>
-          <div class="hw-cell"><span class="name">ROCm</span><span class="sub">AMD discrete</span></div>
-          <div class="hw-cell"><span class="name">CPU</span><span class="sub">fallback, always</span></div>
+        <div class="install-grid">
+          <div class="code-block">
+            <button class="copy" data-copy="bash .claude/skills/llama-cpp-manage/scripts/diagnose.sh" type="button">Copy</button>
+            <div class="h">Diagnose script</div>
+            <div class="ln"><span class="c"># prints distro · llama.cpp · locca</span></div>
+            <div class="ln"><span class="c"># config · /health · pidfile state ·</span></div>
+            <div class="ln"><span class="c"># models dir · vulkan devices.</span></div>
+            <div class="ln">&nbsp;</div>
+            <div class="ln"><span class="p">$</span> bash .claude/skills/<wbr />llama-cpp-manage/<wbr />scripts/<wbr />diagnose.sh</div>
+          </div>
+
+          <div class="code-block">
+            <div class="h">What it teaches the agent</div>
+            <div class="ln"><span class="c">▸ apt / dnf / pacman / zypper /</span></div>
+            <div class="ln"><span class="c">  apk / brew install matrices</span></div>
+            <div class="ln"><span class="c">▸ vulkan · metal · rocm · cuda</span></div>
+            <div class="ln"><span class="c">  backend selection</span></div>
+            <div class="ln"><span class="c">▸ port + /health diagnostics</span></div>
+            <div class="ln"><span class="c">▸ ~/.pi/agent/models.json wiring</span></div>
+            <div class="ln"><span class="c">▸ ctx, sampling, vision mmproj</span></div>
+          </div>
         </div>
       </div>
     </section>
@@ -887,53 +935,36 @@
         <p class="eyebrow">Get going</p>
         <h2 id="install-title">Install in two steps.</h2>
         <p class="section-lede">
-          Install <code style="font-family:var(--mono)">llama.cpp</code>, then
-          install locca. First run launches a wizard that finishes config
-          for you — and prints the exact install hint for your distro if
-          llama.cpp isn't on <code style="font-family:var(--mono)">$PATH</code>.
+          locca drives <code translate="no" style="font-family:var(--mono)">llama.cpp</code>
+          — install that first, then locca on top. First run launches a
+          wizard that finishes config for you and prints the exact install
+          hint for your distro if <code translate="no" style="font-family:var(--mono)">llama.cpp</code>
+          isn’t on <code translate="no" style="font-family:var(--mono)">$PATH</code>.
         </p>
 
         <div class="install-grid">
           <div class="code-block">
-            <button class="copy" data-copy="brew install llama.cpp" type="button">Copy</button>
-            <div class="h">macOS · Homebrew</div>
-            <div class="ln"><span class="c"># 1. install llama.cpp</span></div>
-            <div class="ln"><span class="p">$</span> brew install llama.cpp</div>
+            <div class="h">1 · install llama.cpp</div>
+            <div class="ln"><span class="c"># use your platform’s package</span></div>
+            <div class="ln"><span class="c"># manager — brew, pacman, apt,</span></div>
+            <div class="ln"><span class="c"># dnf, zypper, apk. Or build</span></div>
+            <div class="ln"><span class="c"># from source.</span></div>
             <div class="ln">&nbsp;</div>
-            <div class="ln"><span class="c"># 2. install locca</span></div>
-            <div class="ln"><span class="p">$</span> npm install -g locca</div>
-            <div class="ln"><span class="p">$</span> locca</div>
-          </div>
-
-          <div class="code-block">
-            <button class="copy" data-copy="sudo pacman -S llama.cpp" type="button">Copy</button>
-            <div class="h">Arch / EndeavourOS</div>
-            <div class="ln"><span class="c"># official pkg (CPU + Vulkan)</span></div>
-            <div class="ln"><span class="p">$</span> sudo pacman -S llama.cpp</div>
-            <div class="ln">&nbsp;</div>
-            <div class="ln"><span class="c"># or AUR for cutting-edge</span></div>
-            <div class="ln"><span class="p">$</span> yay -S <span class="k">llama.cpp-vulkan-git</span></div>
-            <div class="ln"><span class="p">$</span> npm install -g locca</div>
+            <div class="ln"><span class="c"># locca setup prints the exact</span></div>
+            <div class="ln"><span class="c"># line for your distro if it’s</span></div>
+            <div class="ln"><span class="c"># missing.</span></div>
           </div>
 
           <div class="code-block">
             <button class="copy" data-copy="npm install -g locca" type="button">Copy</button>
-            <div class="h">Debian · Ubuntu · Fedora · openSUSE · Alpine</div>
-            <div class="ln"><span class="c"># build llama.cpp from source —</span></div>
-            <div class="ln"><span class="c"># `locca setup` prints the exact</span></div>
-            <div class="ln"><span class="c"># apt/dnf/zypper/apk line you need.</span></div>
-            <div class="ln">&nbsp;</div>
+            <div class="h">2 · install locca</div>
             <div class="ln"><span class="p">$</span> npm install -g locca</div>
-            <div class="ln"><span class="p">$</span> locca <span class="c"># wizard runs, tells you what's missing</span></div>
-          </div>
-
-          <div class="code-block">
-            <button class="copy" data-copy="git clone https://github.com/perminder-klair/locca.git" type="button">Copy</button>
-            <div class="h">From source</div>
-            <div class="ln"><span class="p">$</span> git clone https://github.com/perminder-klair/locca.git</div>
-            <div class="ln"><span class="p">$</span> cd locca</div>
+            <div class="ln"><span class="p">$</span> locca <span class="c"># first run = wizard</span></div>
+            <div class="ln">&nbsp;</div>
+            <div class="ln"><span class="c"># or run from source:</span></div>
+            <div class="ln"><span class="p">$</span> git clone …/locca</div>
             <div class="ln"><span class="p">$</span> npm install &amp;&amp; npm run build</div>
-            <div class="ln"><span class="p">$</span> npm link <span class="c"># symlinks `locca` into your PATH</span></div>
+            <div class="ln"><span class="p">$</span> npm link</div>
           </div>
         </div>
       </div>
@@ -945,14 +976,14 @@
         <div class="callout">
           <div>
             <p class="eyebrow" style="margin-bottom:8px">Bonus</p>
-            <h3 id="pi-title">One command into the <a href="https://pi.dev" target="_blank" rel="noopener" style="color:var(--amber)">pi</a> coding agent.</h3>
+            <h2 id="pi-title">One command into the <a href="https://pi.dev" target="_blank" rel="noopener noreferrer" style="color:var(--amber)">pi</a> coding agent.</h2>
             <p>
-              <code>locca pi qwen</code> fuzzy-matches the first
-              <code>*qwen*.gguf</code> in your models dir, brings up the
-              server if it's not already running, and registers itself as a
+              <code translate="no">locca pi qwen</code> fuzzy-matches the first
+              <code translate="no">*qwen*.gguf</code> in your models dir, brings up the
+              server if it isn’t already running, and registers itself as a
               custom OpenAI-compatible provider in
-              <code>~/.pi/agent/models.json</code>. Switch model, switch
-              brain — <code>locca switch llama-3.1-70b</code>.
+              <code translate="no">~/.pi/agent/models.json</code>. Switch model, switch
+              brain — <code translate="no">locca switch llama-3.1-70b</code>.
             </p>
           </div>
           <div class="pi-mark" aria-hidden="true">π</div>

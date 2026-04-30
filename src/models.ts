@@ -10,6 +10,9 @@ export function scanModels(modelsDir: string): Model[] {
     const name = basename(path);
     if (!name.endsWith('.gguf')) return;
     if (name.startsWith('mmproj')) return;
+    // Tokenizer test fixtures from llama.cpp's source tree — they're GGUFs
+    // but contain no weights, so they're not chattable.
+    if (name.startsWith('ggml-vocab-')) return;
 
     const dir = dirname(path);
     let mmproj: string | undefined;

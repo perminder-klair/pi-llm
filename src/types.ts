@@ -8,6 +8,16 @@ export interface Config {
   llamaBench: string;
   piSkillDir?: string;
   /**
+   * Enable pi's built-in skills. Default false — locca passes `--no-skills`
+   * to keep pi focused on local-model coding without skill dispatch.
+   */
+  piSkills?: boolean;
+  /**
+   * Enable pi's extensions. Default false — locca passes `--no-extensions`
+   * for the same reason as `piSkills`.
+   */
+  piExtensions?: boolean;
+  /**
    * Optional URL of an externally-managed llama.cpp server (e.g. one you
    * started yourself, or one on another machine on your LAN). When set,
    * locca uses this URL instead of spawning its own server. Commands

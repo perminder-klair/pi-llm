@@ -104,6 +104,20 @@ export async function runSetup(): Promise<void> {
   // Stored in MB; `undefined` means no cap (current behaviour).
   const vramBudgetMB = await promptForVramBudget(existing.vramBudgetMB);
 
+  // pi skills / extensions — off by default (locca passes --no-skills /
+  // --no-extensions). Enable for users who want pi's full agentic surface.
+  const piSkills = await p.confirm({
+    message: "Enable pi's built-in skills?",
+    initialValue: existing.piSkills ?? false,
+  });
+  exitIfCancelled(piSkills);
+
+  const piExtensions = await p.confirm({
+    message: "Enable pi's extensions?",
+    initialValue: existing.piExtensions ?? false,
+  });
+  exitIfCancelled(piExtensions);
+
   saveConfig({
     modelsDir,
     defaultPort: port,
@@ -111,6 +125,8 @@ export async function runSetup(): Promise<void> {
     defaultThreads: threads,
     serverUrl,
     vramBudgetMB,
+    piSkills,
+    piExtensions,
   });
   p.log.success(`Wrote ${CONFIG_FILE}`);
 

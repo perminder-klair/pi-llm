@@ -50,7 +50,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
     }
     const modelId = status.model ?? 'local';
     console.log(`Using external server: ${status.url}  (model: ${modelId})`);
-    await runPi(cfg.piSkillDir, modelId, `${status.url}/v1`, cfg.defaultCtx, forward);
+    await runPi(cfg, modelId, `${status.url}/v1`, cfg.defaultCtx, forward);
     return;
   }
 
@@ -93,7 +93,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
     } else {
       console.log(`Attached server already serving ${model.name}`);
     }
-    await runPi(cfg.piSkillDir, servedModel, `${status.url}/v1`, cfg.defaultCtx, forward);
+    await runPi(cfg, servedModel, `${status.url}/v1`, cfg.defaultCtx, forward);
     return;
   }
 
@@ -136,7 +136,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
   }
 
   await runPi(
-    cfg.piSkillDir,
+    cfg,
     basename(model.path),
     `http://127.0.0.1:${port}/v1`,
     ctx,
@@ -145,7 +145,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
 }
 
 async function runPi(
-  piSkillDir: string | undefined,
+  cfg: import('../types.js').Config,
   modelId: string,
   baseUrl: string,
   contextWindow: number,
@@ -161,24 +161,20 @@ async function runPi(
   console.log();
 
   const skillArgs: string[] = [];
-  if (piSkillDir) {
+  if (cfg.piSkillDir) {
     try {
-      if (existsSync(piSkillDir) && statSync(piSkillDir).isDirectory()) {
-        skillArgs.push('--skill', piSkillDir);
+      if (existsSync(cfg.piSkillDir) && statSync(cfg.piSkillDir).isDirectory()) {
+        skillArgs.push('--skill', cfg.piSkillDir);
       }
     } catch {
       // ignore
     }
   }
 
-  const piArgs = [
-    '--model',
-    `${PI_PROVIDER_KEY}/${modelId}`,
-    '--no-skills',
-    '--no-extensions',
-    ...skillArgs,
-    ...forward,
-  ];
+  const piArgs = ['--model', `${PI_PROVIDER_KEY}/${modelId}`];
+  if (!cfg.piSkills) piArgs.push('--no-skills');
+  if (!cfg.piExtensions) piArgs.push('--no-extensions');
+  piArgs.push(...skillArgs, ...forward);
 
   const child = spawn('pi', piArgs, { stdio: 'inherit' });
   await new Promise<void>((resolve) => {

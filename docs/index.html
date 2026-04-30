@@ -138,6 +138,54 @@
       .nav-links a:not(.gh) { display: none; }
     }
 
+    /* ---------- video dialog ---------- */
+    .video-dialog {
+      border: 1px solid var(--line-strong);
+      border-radius: 14px;
+      background: var(--bg-soft);
+      color: var(--fg);
+      padding: 0;
+      max-width: min(1100px, 96vw);
+      width: 100%;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+    }
+    .video-dialog::backdrop {
+      background: rgba(8, 10, 13, 0.78);
+      backdrop-filter: blur(4px);
+    }
+    .video-dialog video {
+      display: block;
+      width: 100%;
+      height: auto;
+      border-radius: 14px 14px 0 0;
+      background: #000;
+    }
+    .video-dialog .video-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      font-family: var(--mono);
+      font-size: 13px;
+      color: var(--fg-mute);
+    }
+    .video-dialog .video-close {
+      appearance: none;
+      background: transparent;
+      border: 1px solid var(--line-strong);
+      color: var(--fg);
+      font-family: var(--mono);
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: border-color 0.15s ease, background 0.15s ease;
+    }
+    .video-dialog .video-close:hover {
+      border-color: var(--amber);
+      background: var(--amber-soft);
+    }
+
     /* ---------- hero ---------- */
     .hero {
       padding: clamp(56px, 9vw, 110px) 0 clamp(40px, 7vw, 84px);
@@ -688,7 +736,7 @@
         <a href="#features">Features</a>
         <a href="#commands">Commands</a>
         <a href="#install">Install</a>
-        <a class="gh" href="https://github.com/perminder-klair/locca" target="_blank" rel="noopener noreferrer">GitHub →</a>
+        <a class="gh" href="#" id="openVideo" aria-haspopup="dialog">Watch video</a>
       </nav>
     </div>
   </header>
@@ -1003,6 +1051,14 @@
     </div>
   </footer>
 
+  <dialog id="videoDialog" class="video-dialog" aria-label="locca demo video">
+    <video id="videoPlayer" src="demo.mp4" controls playsinline preload="none" poster="og.png"></video>
+    <div class="video-bar">
+      <span>locca demo · 15 s</span>
+      <button type="button" class="video-close" id="closeVideo" aria-label="close video">Close</button>
+    </div>
+  </dialog>
+
   <script>
     // copy-to-clipboard for hero install bar
     (function () {
@@ -1056,6 +1112,35 @@
         }
       }
       setTimeout(step, 600);
+    })();
+
+    // video dialog
+    (function () {
+      const dlg = document.getElementById('videoDialog');
+      const open = document.getElementById('openVideo');
+      const close = document.getElementById('closeVideo');
+      const video = document.getElementById('videoPlayer');
+      if (!dlg || !open || !close || !video) return;
+      open.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (typeof dlg.showModal === 'function') {
+          dlg.showModal();
+        } else {
+          dlg.setAttribute('open', '');
+        }
+        try { video.currentTime = 0; video.play(); } catch (_) {}
+      });
+      const closeDialog = () => {
+        try { video.pause(); } catch (_) {}
+        if (dlg.open) dlg.close();
+      };
+      close.addEventListener('click', closeDialog);
+      dlg.addEventListener('click', (e) => {
+        const r = dlg.getBoundingClientRect();
+        const inside = e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+        if (!inside) closeDialog();
+      });
+      dlg.addEventListener('close', () => { try { video.pause(); } catch (_) {} });
     })();
   </script>
 </body>

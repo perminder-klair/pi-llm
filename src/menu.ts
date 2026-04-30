@@ -11,8 +11,10 @@ import { pi } from './commands/pi.js';
 import { searchHF } from './commands/search.js';
 import { serve } from './commands/serve.js';
 import { stop } from './commands/stop.js';
+import { scanModels } from './models.js';
 import { serverStatus } from './server.js';
 import { MENU_BACK, exitIfCancelled, pc, printBanner, setMenuMode } from './ui.js';
+import { have } from './util.js';
 
 type Action =
   | 'pi'
@@ -37,6 +39,7 @@ export async function menu(): Promise<void> {
     printBanner({ tagline: firstRender });
     firstRender = false;
     await renderServerLine();
+    renderSetupAlerts();
     console.log();
 
     const action = await p.select<Action>({
@@ -124,6 +127,32 @@ async function renderServerLine(): Promise<void> {
   bits.push(s.url);
   bits.push(tag);
   console.log(pc.green(`  ● Running: ${bits.join(', ')}`));
+}
+
+/**
+ * Highlight missing prerequisites above the menu so users notice before
+ * picking an action that will fail. Both llama.cpp and pi are required
+ * for locca's core flows; an empty models dir means there's nothing to
+ * actually run.
+ */
+function renderSetupAlerts(): void {
+  const cfg = loadConfig();
+  const missing: string[] = [];
+  if (!have('llama-server')) missing.push('llama.cpp not installed');
+  if (!have('pi')) missing.push('pi (coding agent) not installed');
+  let modelsEmpty = false;
+  try {
+    modelsEmpty = scanModels(cfg.modelsDir).length === 0;
+  } catch {
+    modelsEmpty = true;
+  }
+  if (modelsEmpty) missing.push('models directory is empty');
+
+  if (missing.length === 0) return;
+
+  const tag = pc.bgYellow(pc.black(pc.bold(' ACTION REQUIRED ')));
+  console.log(`  ${tag} ${pc.yellow(missing.join(' · '))}`);
+  console.log(pc.dim(`  Run ${pc.cyan('locca setup')} to fix.`));
 }
 
 function isCancelLike(e: unknown): boolean {

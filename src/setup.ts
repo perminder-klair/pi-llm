@@ -128,18 +128,6 @@ export async function runSetup(): Promise<void> {
   });
   p.log.success(`Wrote ${CONFIG_FILE}`);
 
-  if (!llamaPresent) {
-    p.log.warn(
-      `${pc.bgYellow(pc.black(pc.bold(' ACTION REQUIRED ')))} ${pc.yellow(pc.bold('llama-server is not yet on PATH.'))}`,
-    );
-    p.log.message(renderLlamaInstallHint());
-    p.log.message(
-      pc.dim(
-        `If you built it elsewhere, set llamaServer/llamaCli in ${CONFIG_FILE} to absolute paths.`,
-      ),
-    );
-  }
-
   // Offer to grab a starter model when the modelsDir is empty — without
   // weights locca can't actually run anything, and discovering
   // `locca download` on their own is friction.
@@ -157,6 +145,18 @@ export async function runSetup(): Promise<void> {
     });
     exitIfCancelled(installPi);
     if (installPi) await tryInstallPi();
+  }
+
+  if (!llamaPresent) {
+    p.log.warn(
+      `${pc.bgYellow(pc.black(pc.bold(' ACTION REQUIRED ')))} ${pc.yellow(pc.bold('llama-server is not yet on PATH.'))}`,
+    );
+    p.log.message(renderLlamaInstallHint());
+    p.log.message(
+      pc.dim(
+        `If you built it elsewhere, set llamaServer/llamaCli in ${CONFIG_FILE} to absolute paths.`,
+      ),
+    );
   }
 
   p.outro(pc.green('Setup complete. Run `locca` to get started.'));

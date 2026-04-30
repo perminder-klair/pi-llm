@@ -73,9 +73,10 @@ export function llamaInstallHint(d: Distro = detectDistro()): LlamaInstallHint {
       return {
         detected: 'Arch Linux',
         packageLines: [
-          'sudo pacman -S llama.cpp                 # CPU only / generic build',
-          'yay -S llama.cpp-vulkan-git              # AUR — Vulkan (AMD/Intel iGPU)',
+          'yay -S llama.cpp-vulkan-git              # AUR — Vulkan (AMD/Intel iGPU, recommended)',
           'yay -S llama.cpp-hip-git                 # AUR — ROCm (AMD discrete)',
+          'yay -S llama.cpp-cuda                    # AUR — CUDA (NVIDIA)',
+          'yay -S llama.cpp                         # AUR — CPU only / generic build',
         ],
         sourceDepsLine:
           'sudo pacman -S --needed cmake base-devel vulkan-headers vulkan-icd-loader glslang curl',
@@ -222,9 +223,6 @@ export function renderLlamaInstallHint(): string {
     );
     out.push('');
   }
-
-  out.push(pc.bold('Already have a server somewhere else?') + ' Run:');
-  out.push(`  ${pc.cyan('locca setup')}        ${pc.dim('# pick "External" and paste the URL')}`);
 
   return out.join('\n');
 }

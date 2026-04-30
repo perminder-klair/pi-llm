@@ -48,7 +48,7 @@ The `pi` command branches on three states: external server (use as-is, ignore an
 
 ### Config — `src/config.ts`
 
-`~/.config/locca/config.json` (or `$XDG_CONFIG_HOME/locca/`). Written with `mode 0o600`. `loadConfig()` merges over `defaults()` so missing keys (e.g. older configs that predate `serverUrl`) keep working without migration. The `serverUrl` field is the kill switch that turns on external mode globally.
+`~/.locca/config.json`. Written with `mode 0o600`. `loadConfig()` merges over `defaults()` so missing keys (e.g. older configs that predate `serverUrl`) keep working without migration. The `serverUrl` field is the kill switch that turns on external mode globally.
 
 ### Distro detection — `src/distro.ts`
 

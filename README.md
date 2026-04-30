@@ -20,7 +20,7 @@ locca                  # first run launches the setup wizard
 
 The setup wizard:
 
-1. Asks for your **models directory** (default `~/.lmstudio/models`, expands
+1. Asks for your **models directory** (default `~/.locca/models`, expands
    `~`, `mkdir -p` on confirm).
 2. Lets you choose **Local** (locca spawns `llama-server` for you) or
    **External** (locca talks to a server you started yourself, on this
@@ -28,7 +28,7 @@ The setup wizard:
 3. Sets **server defaults** (port / ctx / threads — confirm or customize).
 4. Offers to install `pi`: tries `mise` → `npm` → manual hint.
 
-It then writes `~/.config/locca/config.json` and drops you at the menu.
+It then writes `~/.locca/config.json` and drops you at the menu.
 
 If `llama-server` isn't on `$PATH`, locca detects your distro and prints
 the exact install command — apt for Debian/Ubuntu, dnf for Fedora,
@@ -139,11 +139,11 @@ rate determines time-to-first-token on long prompts.
 | Purpose | Path |
 |---|---|
 | Binary | wherever `npm` puts globals (`npm prefix -g`/bin) |
-| Config | `${XDG_CONFIG_HOME:-~/.config}/locca/config.json` |
+| Config | `~/.locca/config.json` |
 | Server PID | `${XDG_RUNTIME_DIR:-/tmp}/locca-server.pid` |
 | Server log | `${XDG_RUNTIME_DIR:-/tmp}/locca-server.log` |
 | pi provider config | `${PI_CODING_AGENT_DIR:-~/.pi/agent}/models.json` (written by locca) |
-| Models dir (configurable) | `~/.lmstudio/models` (default) |
+| Models dir (configurable) | `~/.locca/models` (default) |
 | Downloaded GGUFs | `$modelsDir/<repo>/` |
 
 On Linux, runtime files live in `/run/user/$UID/` and are wiped on reboot.
@@ -167,12 +167,12 @@ a duplicate.
 
 ## Configuration
 
-`locca setup` writes `~/.config/locca/config.json`. Edit by hand or re-run
+`locca setup` writes `~/.locca/config.json`. Edit by hand or re-run
 the wizard:
 
 ```json
 {
-  "modelsDir": "/home/you/.lmstudio/models",
+  "modelsDir": "/home/you/.locca/models",
   "defaultPort": 8080,
   "defaultCtx": 32768,
   "defaultThreads": 10,
@@ -275,7 +275,7 @@ npm run build
 
 ```bash
 npm uninstall -g locca
-rm -rf "$HOME/.config/locca"                           # remove config (optional)
+rm -rf "$HOME/.locca"                                   # remove config + models (optional)
 rm -rf "$HOME/.pi/agent"                                # remove pi provider config (optional)
 rm -f "${XDG_RUNTIME_DIR:-/tmp}/locca-server."{pid,log}
 ```

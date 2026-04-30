@@ -25,6 +25,6 @@ export function requireLlama(cfg: Config): void {
 ${renderLlamaInstallHint()}
 
 If you built llama.cpp elsewhere, set llamaServer / llamaCli in
-~/.config/locca/config.json to absolute paths.`);
+~/.locca/config.json to absolute paths.`);
   process.exit(1);
 }

@@ -1,8 +1,11 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import * as p from '@clack/prompts';
+import { download } from './commands/download.js';
+import { searchHF } from './commands/search.js';
 import { CONFIG_FILE, loadConfig, saveConfig } from './config.js';
 import { detectDistro, renderLlamaInstallHint } from './distro.js';
+import { scanModels } from './models.js';
 import { probeServer } from './server.js';
 import { exitIfCancelled, pc } from './ui.js';
 import { autoThreads, expandHome, have } from './util.js';
@@ -138,6 +141,13 @@ export async function runSetup(): Promise<void> {
     );
   }
 
+  // Offer to grab a starter model when the modelsDir is empty and the user
+  // is going to spawn locally — without weights they can't actually run
+  // anything, and discovering `locca download` on their own is friction.
+  if (source === 'local' && scanModels(modelsDir).length === 0) {
+    await promptForFirstModel();
+  }
+
   // pi (coding agent)
   if (have('pi')) {
     p.log.success('pi (coding agent) found');
@@ -221,6 +231,56 @@ async function promptForExternalServer(
     if (retry === 'save') return url;
     if (retry === 'cancel') process.exit(0);
     // else retry loop
+  }
+}
+
+async function promptForFirstModel(): Promise<void> {
+  p.log.message('Your models directory is empty — locca needs a .gguf to run.');
+
+  type Choice = 'gemma-e2b' | 'qwen-9b' | 'qwen-moe' | 'browse' | 'skip';
+  const choice = await p.select<Choice>({
+    message: 'Grab a starter model now?',
+    initialValue: 'gemma-e2b',
+    options: [
+      {
+        value: 'gemma-e2b',
+        label: 'Gemma 4 E2B IT       — tiny, runs almost anywhere',
+        hint: 'smallest; good first model',
+      },
+      {
+        value: 'qwen-9b',
+        label: 'Qwen3.5 9B           — strong general / coding',
+        hint: '~6 GB at Q4; fits 8 GB VRAM',
+      },
+      {
+        value: 'qwen-moe',
+        label: 'Qwen3.6 35B-A3B MoE  — flagship, 3B active',
+        hint: 'big download but fast inference; needs ~20 GB',
+      },
+      { value: 'browse', label: 'Browse HuggingFace…', hint: 'search by name' },
+      { value: 'skip', label: 'Skip — add models later with `locca download`' },
+    ],
+  });
+  exitIfCancelled(choice);
+
+  if (choice === 'skip') {
+    p.log.message('Add a model anytime with `locca download <repo>` or `locca search`.');
+    return;
+  }
+
+  try {
+    if (choice === 'gemma-e2b') {
+      await download(['unsloth/gemma-4-E2B-it-GGUF']);
+    } else if (choice === 'qwen-9b') {
+      await download(['unsloth/Qwen3.5-9B-GGUF']);
+    } else if (choice === 'qwen-moe') {
+      await download(['unsloth/Qwen3.6-35B-A3B-GGUF']);
+    } else {
+      await searchHF([]);
+    }
+  } catch (e) {
+    p.log.warn(`Model download failed: ${(e as Error).message}`);
+    p.log.message('You can retry later with `locca download` or `locca search`.');
   }
 }
 

@@ -28,13 +28,8 @@ export async function serve(): Promise<void> {
       );
       process.exit(1);
     }
-    p.log.warn(`Server already running (pid ${status.pid})`);
-    const cont = await p.confirm({
-      message: 'Stop it and start a new one?',
-      initialValue: false,
-    });
-    exitIfCancelled(cont);
-    if (!cont) return;
+    // pid source: locca started it, so just swap — no need to interrogate.
+    p.log.info(`Stopping current server (pid ${status.pid}) to start a new one...`);
     await stopServer(cfg);
     await new Promise((r) => setTimeout(r, 500));
   }

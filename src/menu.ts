@@ -57,14 +57,41 @@ export async function menu(): Promise<void> {
     // killing the whole process. setMenuMode flips exitIfCancelled into
     // throw-mode; we catch the sentinel and loop.
     setMenuMode(true);
+    let cancelled = false;
     try {
       await runAction(action);
     } catch (e) {
       if (!isCancelLike(e)) throw e;
+      cancelled = true;
     } finally {
       setMenuMode(false);
     }
+
+    // After a normal completion (e.g. `serve` printed connection info,
+    // `status` printed a report), pause so the output stays on screen until
+    // the user is ready to redraw the menu over it. On Esc/cancel the user
+    // already wants out — skip the pause to keep the back-out snappy.
+    if (!cancelled) await pauseUntilEnter();
   }
+}
+
+/**
+ * Block the menu loop until the user presses Enter, so output from the
+ * just-finished action (connection info, status table, etc.) doesn't get
+ * scrolled off by the next menu redraw.
+ *
+ * Stdin is in line-buffered mode here (Clack restored it when its prompt
+ * closed), so a single `data` event fires per line — Enter is enough.
+ */
+async function pauseUntilEnter(): Promise<void> {
+  if (!process.stdin.isTTY) return;
+  await new Promise<void>((resolve) => {
+    const onData = () => {
+      process.stdin.off('data', onData);
+      resolve();
+    };
+    process.stdin.on('data', onData);
+  });
 }
 
 function isCancelLike(e: unknown): boolean {

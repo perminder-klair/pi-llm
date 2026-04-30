@@ -44,7 +44,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
     const status = await serverStatus(cfg);
     if (!status.running) {
       p.log.error(
-        `Configured serverUrl (${cfg.serverUrl}) is not responding. Start it or run \`pi-llm setup\` to clear serverUrl.`,
+        `Configured serverUrl (${cfg.serverUrl}) is not responding. Start it or run \`locca setup\` to clear serverUrl.`,
       );
       process.exit(1);
     }
@@ -74,7 +74,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
 
   let status = await serverStatus(cfg);
 
-  // If `switch` was invoked, stop pi-llm-managed server first.
+  // If `switch` was invoked, stop locca-managed server first.
   if (opts.stopFirst && status.running && status.source === 'pid') {
     await stopServer(cfg);
     await new Promise((r) => setTimeout(r, 500));
@@ -88,7 +88,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
     const servedModel = status.model ?? 'unknown';
     if (basename(model.path) !== servedModel) {
       p.log.warn(
-        `Attached server is serving '${servedModel}', not '${model.name}'. Using attached server (can't switch model on a server pi-llm doesn't manage).`,
+        `Attached server is serving '${servedModel}', not '${model.name}'. Using attached server (can't switch model on a server locca doesn't manage).`,
       );
     } else {
       console.log(`Attached server already serving ${model.name}`);
@@ -127,7 +127,7 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
     const ready = await waitReady(port, 30);
     if (!ready) {
       p.log.error(
-        `Server failed to start. Check ${process.env.XDG_RUNTIME_DIR ?? '/tmp'}/pi-llm-server.log`,
+        `Server failed to start. Check ${process.env.XDG_RUNTIME_DIR ?? '/tmp'}/locca-server.log`,
       );
       await stopServer(cfg);
       process.exit(1);

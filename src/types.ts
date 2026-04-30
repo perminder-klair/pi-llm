@@ -10,7 +10,7 @@ export interface Config {
   /**
    * Optional URL of an externally-managed llama.cpp server (e.g. one you
    * started yourself, or one on another machine on your LAN). When set,
-   * pi-llm uses this URL instead of spawning its own server. Commands
+   * locca uses this URL instead of spawning its own server. Commands
    * like `serve`, `stop`, `logs` are disabled in this mode.
    */
   serverUrl?: string;
@@ -18,7 +18,7 @@ export interface Config {
    * Approximate VRAM budget in MB. Caps the context window that
    * `ctxForModel()` auto-picks per model so 128k defaults don't OOM on
    * smaller GPUs. Does NOT override an explicit `defaultCtx` or a ctx
-   * the user types into `pi-llm serve`. Leave unset for no cap.
+   * the user types into `locca serve`. Leave unset for no cap.
    */
   vramBudgetMB?: number;
 }

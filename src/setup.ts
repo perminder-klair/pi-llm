@@ -8,7 +8,7 @@ import { exitIfCancelled, pc } from './ui.js';
 import { autoThreads, expandHome, have } from './util.js';
 
 export async function runSetup(): Promise<void> {
-  p.intro(pc.magenta(pc.bold('pi-llm setup')));
+  p.intro(pc.magenta(pc.bold('locca setup')));
 
   const existing = loadConfig();
   const totalCores = autoThreads() + 2; // autoThreads = nproc - 2
@@ -33,7 +33,7 @@ export async function runSetup(): Promise<void> {
       mkdirSync(modelsDir, { recursive: true });
       p.log.success(`Created ${modelsDir}`);
     } else {
-      p.log.warn('Skipped — pi-llm will fail until this directory exists.');
+      p.log.warn('Skipped — locca will fail until this directory exists.');
     }
   }
 
@@ -42,24 +42,24 @@ export async function runSetup(): Promise<void> {
   const distro = detectDistro();
 
   const sourceLabel = llamaPresent
-    ? `llama-server is on PATH — pi-llm will spawn it for you (detected ${distro.prettyName})`
+    ? `llama-server is on PATH — locca will spawn it for you (detected ${distro.prettyName})`
     : `llama-server NOT found in PATH (detected ${distro.prettyName})`;
   p.log.message(sourceLabel);
 
   type Source = 'local' | 'external';
   const defaultSource: Source = llamaPresent ? 'local' : 'external';
   const source = await p.select<Source>({
-    message: 'How should pi-llm reach llama.cpp?',
+    message: 'How should locca reach llama.cpp?',
     initialValue: defaultSource,
     options: [
       {
         value: 'local',
-        label: 'Local — pi-llm spawns llama-server when needed',
+        label: 'Local — locca spawns llama-server when needed',
         hint: llamaPresent ? '' : 'requires llama-server on PATH',
       },
       {
         value: 'external',
-        label: 'External — pi-llm connects to a server you already run',
+        label: 'External — locca connects to a server you already run',
         hint: 'e.g. another machine on your LAN, or a server you start yourself',
       },
     ],
@@ -134,7 +134,7 @@ export async function runSetup(): Promise<void> {
     if (installPi) await tryInstallPi();
   }
 
-  p.outro(pc.green('Setup complete. Run `pi-llm` to get started.'));
+  p.outro(pc.green('Setup complete. Run `locca` to get started.'));
 }
 
 async function promptForVramBudget(

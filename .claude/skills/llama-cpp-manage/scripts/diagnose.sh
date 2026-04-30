@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# llama.cpp / pi-llm diagnostic snapshot.
+# llama.cpp / locca diagnostic snapshot.
 # Read-only — never starts or stops anything. Run when something feels off
 # and you want a single dump of relevant state to share or reason about.
 
@@ -34,14 +34,14 @@ for bin in llama-server llama-cli llama-bench; do
   fi
 done
 
-# ── pi-llm config ─────────────────────────────────────────────────────
-heading "pi-llm"
-if command -v pi-llm >/dev/null 2>&1; then
-  ok "pi-llm → $(command -v pi-llm)"
+# ── locca config ─────────────────────────────────────────────────────
+heading "locca"
+if command -v locca >/dev/null 2>&1; then
+  ok "locca → $(command -v locca)"
 else
-  miss "pi-llm not on PATH"
+  miss "locca not on PATH"
 fi
-CFG="${XDG_CONFIG_HOME:-$HOME/.config}/pi-llm/config.json"
+CFG="${XDG_CONFIG_HOME:-$HOME/.config}/locca/config.json"
 if [[ -f "$CFG" ]]; then
   ok "config: $CFG"
   if command -v jq >/dev/null 2>&1; then
@@ -50,7 +50,7 @@ if [[ -f "$CFG" ]]; then
     sed 's/^/    /' "$CFG"
   fi
 else
-  warn "no config — run 'pi-llm setup'"
+  warn "no config — run 'locca setup'"
 fi
 
 # ── Server health ─────────────────────────────────────────────────────
@@ -82,24 +82,24 @@ else
       TITLE=$(curl -s -m 2 "http://127.0.0.1:${PORT}/" 2>/dev/null | grep -oiE '<title>[^<]+</title>' | head -1)
       [[ -n "$TITLE" ]] && note "page title: ${TITLE}"
     else
-      note "port ${PORT} is free — start a server with 'pi-llm serve'"
+      note "port ${PORT} is free — start a server with 'locca serve'"
     fi
   fi
 fi
 
 # ── PID file ──────────────────────────────────────────────────────────
 heading "Managed-server PID"
-PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/pi-llm-server.pid"
+PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/locca-server.pid"
 if [[ -f "$PIDFILE" ]]; then
   PID=$(cat "$PIDFILE")
   if kill -0 "$PID" 2>/dev/null; then
     ok "PIDFILE → $PID (alive)"
   else
     warn "PIDFILE → $PID (stale; process gone)"
-    note "pi-llm cleans this up on next run"
+    note "locca cleans this up on next run"
   fi
 else
-  note "no PIDFILE at $PIDFILE  (server isn't pi-llm-managed)"
+  note "no PIDFILE at $PIDFILE  (server isn't locca-managed)"
 fi
 
 # ── Models dir ────────────────────────────────────────────────────────
@@ -130,10 +130,10 @@ if command -v pi >/dev/null 2>&1; then
       ok "$PI_MODELS exists"
     fi
   else
-    note "$PI_MODELS not yet written (pi-llm writes it before launching pi)"
+    note "$PI_MODELS not yet written (locca writes it before launching pi)"
   fi
 else
-  warn "pi not on PATH — only the 'pi' subcommand of pi-llm needs it"
+  warn "pi not on PATH — only the 'pi' subcommand of locca needs it"
 fi
 
 # ── GPU / Vulkan ──────────────────────────────────────────────────────

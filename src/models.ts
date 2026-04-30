@@ -120,7 +120,7 @@ export function ctxForModel(name: string, vramBudgetMB?: number): number {
 // numbers assume the server's q8_0 KV-cache defaults — they're meant to
 // keep load-time OOM at bay on smaller GPUs, not to maximise utilisation.
 // Users who want more can set `defaultCtx` explicitly or pass ctx to
-// `pi-llm serve`.
+// `locca serve`.
 export function ctxCapForBudget(vramBudgetMB?: number): number | undefined {
   if (!vramBudgetMB || vramBudgetMB <= 0) return undefined;
   if (vramBudgetMB <= 6 * 1024) return 8192;

@@ -13,7 +13,7 @@ export async function serve(): Promise<void> {
 
   if (cfg.serverUrl) {
     p.log.error(
-      `An external server is configured (serverUrl: ${cfg.serverUrl}). The 'serve' command spawns its own — that would conflict. Run \`pi-llm setup\` to clear serverUrl, or stop using this command.`,
+      `An external server is configured (serverUrl: ${cfg.serverUrl}). The 'serve' command spawns its own — that would conflict. Run \`locca setup\` to clear serverUrl, or stop using this command.`,
     );
     process.exit(1);
   }
@@ -24,7 +24,7 @@ export async function serve(): Promise<void> {
   if (status.running) {
     if (status.source === 'attached') {
       p.log.error(
-        `Something is already responding on port ${status.port} (${status.url}) — pi-llm did not start it. Stop it via whatever started it before running \`pi-llm serve\`.`,
+        `Something is already responding on port ${status.port} (${status.url}) — locca did not start it. Stop it via whatever started it before running \`locca serve\`.`,
       );
       process.exit(1);
     }
@@ -100,24 +100,24 @@ export async function serve(): Promise<void> {
     port,
     ctx,
     threads,
-    // Detached: server keeps running after pi-llm exits. Stop it with
-    // `pi-llm stop`. Logs go to the log file (see `pi-llm logs`).
+    // Detached: server keeps running after locca exits. Stop it with
+    // `locca stop`. Logs go to the log file (see `locca logs`).
     detached: true,
   });
 
   const ready = await waitReady(port, 60);
   if (!ready) {
     p.log.warn(
-      'Server did not become ready within 60s — run `pi-llm logs` to see output.',
+      'Server did not become ready within 60s — run `locca logs` to see output.',
     );
     return;
   }
 
   // Show the OpenAI-compatible connection info — same output as
-  // `pi-llm api`. Includes LAN / Tailscale URLs when bound to 0.0.0.0,
+  // `locca api`. Includes LAN / Tailscale URLs when bound to 0.0.0.0,
   // model name, endpoints, and a curl quick-test.
   await api();
-  console.log(`  ${pc.dim('Stop with: pi-llm stop  |  Logs: pi-llm logs')}`);
+  console.log(`  ${pc.dim('Stop with: locca stop  |  Logs: locca logs')}`);
   console.log();
 }
 

@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import type { Config } from './types.js';
 
 const RUNDIR = process.env.XDG_RUNTIME_DIR ?? '/tmp';
-export const PIDFILE = join(RUNDIR, 'pi-llm-server.pid');
-export const LOGFILE = join(RUNDIR, 'pi-llm-server.log');
+export const PIDFILE = join(RUNDIR, 'locca-server.pid');
+export const LOGFILE = join(RUNDIR, 'locca-server.log');
 
 export function isAlive(pid: number): boolean {
   try {
@@ -19,7 +19,7 @@ export function isAlive(pid: number): boolean {
 }
 
 /**
- * `pid`      — pi-llm spawned this server (we own its lifecycle).
+ * `pid`      — locca spawned this server (we own its lifecycle).
  * `external` — config.serverUrl is set; an externally-managed server.
  * `attached` — no PIDFILE, but something's responding on the local default
  *              port. Could be a llama-server started by hand, by a
@@ -183,7 +183,7 @@ export async function serverStatus(cfg: Config): Promise<ServerStatus> {
   }
 
   // Maybe something's already on our default port (a llama-server started
-  // outside pi-llm — by hand, by a supervisor, by another tool).
+  // outside locca — by hand, by a supervisor, by another tool).
   const localUrl = `http://127.0.0.1:${cfg.defaultPort}`;
   const probe = await probeServer(localUrl, 600);
   if (probe.alive) {
@@ -216,7 +216,7 @@ export type StopResult =
   | { stopped: false; reason: string };
 
 /**
- * Stop the server pi-llm started. Refuses to touch externally-managed or
+ * Stop the server locca started. Refuses to touch externally-managed or
  * attached servers — those need to be stopped via the tool that started them.
  */
 export async function stopServer(cfg: Config): Promise<StopResult> {
@@ -231,7 +231,7 @@ export async function stopServer(cfg: Config): Promise<StopResult> {
   if (s.source === 'attached') {
     return {
       stopped: false,
-      reason: `server at ${s.url} wasn't started by pi-llm — stop it via whatever started it`,
+      reason: `server at ${s.url} wasn't started by locca — stop it via whatever started it`,
     };
   }
   if (s.pid) {

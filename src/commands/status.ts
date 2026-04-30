@@ -29,7 +29,7 @@ export async function renderServerLine(): Promise<void> {
   console.log(pc.green(`  ● Running: ${bits.join(', ')}`));
 }
 
-/** `pi-llm status` — full report on the server, llama.cpp binary, and models dir. */
+/** `locca status` — full report on the server, llama.cpp binary, and models dir. */
 export async function status(): Promise<void> {
   const cfg = loadConfig();
   header();
@@ -52,10 +52,10 @@ async function renderServerSection(cfg: Config): Promise<void> {
   }
   const sourceLabel =
     s.source === 'pid'
-      ? `pi-llm-managed (pid ${s.pid})`
+      ? `locca-managed (pid ${s.pid})`
       : s.source === 'external'
         ? 'external (configured serverUrl)'
-        : 'attached (started outside pi-llm)';
+        : 'attached (started outside locca)';
   console.log(`    ${pc.green('● Running')}  ${pc.dim(sourceLabel)}`);
   console.log(`    Model        ${s.model ?? pc.dim('(unknown)')}`);
   console.log(`    URL          ${s.url}/v1`);
@@ -77,7 +77,7 @@ function renderLlamaSection(cfg: Config): void {
   const path = which(cfg.llamaServer);
   if (!path) {
     console.log(`    ${pc.red('Not found')}  ${pc.dim(`(looking for: ${cfg.llamaServer})`)}`);
-    console.log(`    ${pc.dim('Run `pi-llm setup` for install instructions.')}`);
+    console.log(`    ${pc.dim('Run `locca setup` for install instructions.')}`);
     return;
   }
   console.log(`    ${path}`);

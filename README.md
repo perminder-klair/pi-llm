@@ -1,4 +1,4 @@
-# pi-llm
+# locca
 
 A TUI around [llama.cpp](https://github.com/ggml-org/llama.cpp) for running,
 managing, and benchmarking local GGUF models — and launching the
@@ -12,23 +12,23 @@ Metal, CUDA, ROCm) or CPU-only. Defaults are tuned for iGPU-class hardware
 ## Quickstart
 
 ```bash
-npm install -g pi-llm
-pi-llm                  # first run launches the setup wizard
+npm install -g locca
+locca                  # first run launches the setup wizard
 ```
 
 The setup wizard:
 
 1. Asks for your **models directory** (default `~/.lmstudio/models`, expands
    `~`, `mkdir -p` on confirm).
-2. Lets you choose **Local** (pi-llm spawns `llama-server` for you) or
-   **External** (pi-llm talks to a server you started yourself, on this
+2. Lets you choose **Local** (locca spawns `llama-server` for you) or
+   **External** (locca talks to a server you started yourself, on this
    machine or another). External URLs are probed before they're saved.
 3. Sets **server defaults** (port / ctx / threads — confirm or customize).
 4. Offers to install `pi`: tries `mise` → `npm` → manual hint.
 
-It then writes `~/.config/pi-llm/config.json` and drops you at the menu.
+It then writes `~/.config/locca/config.json` and drops you at the menu.
 
-If `llama-server` isn't on `$PATH`, pi-llm detects your distro and prints
+If `llama-server` isn't on `$PATH`, locca detects your distro and prints
 the exact install command — apt for Debian/Ubuntu, dnf for Fedora,
 pacman/AUR for Arch, zypper for openSUSE, apk for Alpine, brew for
 macOS — including the non-obvious shader compiler packages (`glslc`,
@@ -37,47 +37,47 @@ macOS — including the non-obvious shader compiler packages (`glslc`,
 ### Run from source (dev)
 
 ```bash
-git clone https://github.com/perminder-klair/pi-llm.git
-cd pi-llm
+git clone https://github.com/perminder-klair/locca.git
+cd locca
 npm install
 npm run build
-npm link              # symlinks `pi-llm` into your PATH
+npm link              # symlinks `locca` into your PATH
 ```
 
 ## Commands
 
 ```
-pi-llm                          # interactive menu (Pi is default)
-pi-llm pi [model-pattern]       # launch pi coding agent against a local server
-pi-llm serve                    # start llama-server with a picked model (detached)
-pi-llm switch [model-pattern]   # stop current server, start a new model with pi
-pi-llm bench                    # run llama-bench against a model
-pi-llm status                   # server / llama.cpp / models summary
-pi-llm api                      # print OpenAI-compatible connection info
-pi-llm logs                     # tail server log (pi-started servers only)
-pi-llm download [user/repo]     # pull a GGUF from HuggingFace
-pi-llm search   [query]         # search HuggingFace for GGUF models
-pi-llm delete                   # remove a model directory
-pi-llm stop                     # stop the running server
-pi-llm setup                    # re-run the setup wizard
-pi-llm help                     # full command listing
+locca                          # interactive menu (Pi is default)
+locca pi [model-pattern]       # launch pi coding agent against a local server
+locca serve                    # start llama-server with a picked model (detached)
+locca switch [model-pattern]   # stop current server, start a new model with pi
+locca bench                    # run llama-bench against a model
+locca status                   # server / llama.cpp / models summary
+locca api                      # print OpenAI-compatible connection info
+locca logs                     # tail server log (pi-started servers only)
+locca download [user/repo]     # pull a GGUF from HuggingFace
+locca search   [query]         # search HuggingFace for GGUF models
+locca delete                   # remove a model directory
+locca stop                     # stop the running server
+locca setup                    # re-run the setup wizard
+locca help                     # full command listing
 ```
 
-`pi-llm pi qwen` will fuzzy-match the first `*qwen*.gguf` in your models dir.
+`locca pi qwen` will fuzzy-match the first `*qwen*.gguf` in your models dir.
 
-## Connection info — `pi-llm api`
+## Connection info — `locca api`
 
-When a server is running, `pi-llm api` prints the OpenAI-compatible connection
+When a server is running, `locca api` prints the OpenAI-compatible connection
 block: base URL, the loaded model name, every endpoint (`/chat/completions`,
 `/completions`, `/embeddings`, `/models`, plus native `/health`, `/props`,
 `/slots`, `/metrics`), and a copy-pasteable `curl` quick-test.
 
-If the server bound `0.0.0.0` (the default for `pi-llm serve`), it also lists
+If the server bound `0.0.0.0` (the default for `locca serve`), it also lists
 every **LAN** and **Tailscale** URL the same server is reachable at — probed
 live, so only working URLs show up. Useful for pointing a phone or another
 machine at the same server.
 
-The same output prints automatically after `pi-llm serve` succeeds, so you
+The same output prints automatically after `locca serve` succeeds, so you
 rarely need to call `api` directly.
 
 ## Defaults baked into the server
@@ -110,11 +110,11 @@ ctx = larger KV cache = more VRAM. q8_0 KV cache is what makes 128k feasible
 on a shared-VRAM iGPU.
 
 Sampling parameters (temperature, top_p, etc.) are read from the **GGUF
-metadata** when `--jinja` is on — pi-llm doesn't override. Verify what your
+metadata** when `--jinja` is on — locca doesn't override. Verify what your
 running server is using with `curl -s http://localhost:<port>/props | jq
 '.default_generation_settings.params'`.
 
-## Benchmarking — `pi-llm bench`
+## Benchmarking — `locca bench`
 
 Wraps `llama-bench -o json` and renders a friendlier summary than the raw
 markdown table:
@@ -137,10 +137,10 @@ rate determines time-to-first-token on long prompts.
 | Purpose | Path |
 |---|---|
 | Binary | wherever `npm` puts globals (`npm prefix -g`/bin) |
-| Config | `${XDG_CONFIG_HOME:-~/.config}/pi-llm/config.json` |
-| Server PID | `${XDG_RUNTIME_DIR:-/tmp}/pi-llm-server.pid` |
-| Server log | `${XDG_RUNTIME_DIR:-/tmp}/pi-llm-server.log` |
-| pi provider config | `${PI_CODING_AGENT_DIR:-~/.pi/agent}/models.json` (written by pi-llm) |
+| Config | `${XDG_CONFIG_HOME:-~/.config}/locca/config.json` |
+| Server PID | `${XDG_RUNTIME_DIR:-/tmp}/locca-server.pid` |
+| Server log | `${XDG_RUNTIME_DIR:-/tmp}/locca-server.log` |
+| pi provider config | `${PI_CODING_AGENT_DIR:-~/.pi/agent}/models.json` (written by locca) |
 | Models dir (configurable) | `~/.lmstudio/models` (default) |
 | Downloaded GGUFs | `$modelsDir/<repo>/` |
 
@@ -149,23 +149,23 @@ That's intentional.
 
 ## Server source taxonomy
 
-`pi-llm status` and `pi-llm api` classify the running server into one of three
+`locca status` and `locca api` classify the running server into one of three
 sources. The distinction drives what `serve` / `stop` / `logs` will let you do:
 
 | Source | What it means | `serve`/`stop` allowed? |
 |---|---|---|
-| `pid` | pi-llm spawned this server (PIDFILE in `XDG_RUNTIME_DIR`) | yes |
+| `pid` | locca spawned this server (PIDFILE in `XDG_RUNTIME_DIR`) | yes |
 | `external` | `serverUrl` is configured in your config and reachable | no — manage where it was started |
-| `attached` | no PIDFILE, but `/health` responds on `defaultPort` (a `llama-server` you started outside pi-llm) | no — stop it via whatever started it |
+| `attached` | no PIDFILE, but `/health` responds on `defaultPort` (a `llama-server` you started outside locca) | no — stop it via whatever started it |
 
-This means pi-llm composes cleanly with anything else that runs llama.cpp:
-start a server by hand, with a supervisor, or via another tool, and pi-llm
-will detect it and use it via `pi-llm pi` instead of fighting for VRAM with
+This means locca composes cleanly with anything else that runs llama.cpp:
+start a server by hand, with a supervisor, or via another tool, and locca
+will detect it and use it via `locca pi` instead of fighting for VRAM with
 a duplicate.
 
 ## Configuration
 
-`pi-llm setup` writes `~/.config/pi-llm/config.json`. Edit by hand or re-run
+`locca setup` writes `~/.config/locca/config.json`. Edit by hand or re-run
 the wizard:
 
 ```json
@@ -195,15 +195,15 @@ Source builds: if the binaries aren't on `$PATH`, point them at absolute paths:
 `piSkillDir` is optional — when set to an existing directory it's passed to
 `pi` as `--skill <dir>`.
 
-`serverUrl` is optional — when set, pi-llm uses an externally-managed
+`serverUrl` is optional — when set, locca uses an externally-managed
 llama.cpp server (one you started yourself, or one running on another machine
 on your LAN) instead of spawning its own. In that mode `serve`, `stop`, and
 `logs` are disabled (they don't make sense — the server isn't ours to
 manage). `pi`, `bench`, etc. still work.
 
-Even without `serverUrl`, pi-llm probes the configured `defaultPort` at
+Even without `serverUrl`, locca probes the configured `defaultPort` at
 startup. If something already responds to `/health` (a llama-server you
-started outside pi-llm), pi-llm marks it as **attached** (see the source
+started outside locca), locca marks it as **attached** (see the source
 taxonomy above) and uses it instead of spawning a duplicate.
 
 ## Bundled skill (Claude Code / agent-aware editors)
@@ -221,7 +221,7 @@ bash .claude/skills/llama-cpp-manage/scripts/diagnose.sh
 ```
 
 The script dumps a one-shot health snapshot — distro, llama.cpp binaries,
-pi-llm config, server `/health` + `/v1/models` + `/props`, PID file state,
+locca config, server `/health` + `/v1/models` + `/props`, PID file state,
 models dir size, pi provider registration, and Vulkan device list.
 
 If you don't use Claude Code or a similar agent harness, this directory is
@@ -236,34 +236,34 @@ harmless to ignore.
   - Arch: `sudo pacman -S llama.cpp` · `yay -S llama.cpp-vulkan-git` · `yay -S llama.cpp-hip-git`
   - macOS: `brew install llama.cpp`
   - Debian / Ubuntu / Fedora / openSUSE / Alpine: build from source —
-    `pi-llm setup` prints the exact `apt`/`dnf`/`zypper`/`apk` line you
+    `locca setup` prints the exact `apt`/`dnf`/`zypper`/`apk` line you
     need; full deps reference at
     [`.claude/skills/llama-cpp-manage/references/install.md`](.claude/skills/llama-cpp-manage/references/install.md).
 
 **Optional**
 
-- `pi` ([pi.dev](https://pi.dev)) — required for the `pi-llm pi` subcommand.
+- `pi` ([pi.dev](https://pi.dev)) — required for the `locca pi` subcommand.
   The setup wizard offers to install it, or:
   ```bash
   npm install -g @mariozechner/pi-coding-agent
   # or
   mise use -g npm:@mariozechner/pi-coding-agent
   ```
-- `vulkan-tools` — `vulkaninfo` for GPU diagnostics; pi-llm's diagnose script
+- `vulkan-tools` — `vulkaninfo` for GPU diagnostics; locca's diagnose script
   uses it.
 - `rocm-smi-lib` — VRAM monitoring on AMD discrete GPUs.
-- `jq` — only used by `diagnose.sh` for prettier output; not required by pi-llm itself.
+- `jq` — only used by `diagnose.sh` for prettier output; not required by locca itself.
 
 ## Updating
 
 ```bash
-npm update -g pi-llm
+npm update -g locca
 ```
 
 Or, if installed from source via `npm link`:
 
 ```bash
-cd path/to/pi-llm
+cd path/to/locca
 git pull
 npm install
 npm run build
@@ -272,10 +272,10 @@ npm run build
 ## Uninstall
 
 ```bash
-npm uninstall -g pi-llm
-rm -rf "$HOME/.config/pi-llm"                           # remove config (optional)
+npm uninstall -g locca
+rm -rf "$HOME/.config/locca"                           # remove config (optional)
 rm -rf "$HOME/.pi/agent"                                # remove pi provider config (optional)
-rm -f "${XDG_RUNTIME_DIR:-/tmp}/pi-llm-server."{pid,log}
+rm -f "${XDG_RUNTIME_DIR:-/tmp}/locca-server."{pid,log}
 ```
 
 ## License

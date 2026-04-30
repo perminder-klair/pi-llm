@@ -204,7 +204,7 @@ export function renderLlamaInstallHint(): string {
   }
 
   out.push('Already have a server somewhere else? Run:');
-  out.push('  pi-llm setup        # pick "External" and paste the URL');
+  out.push('  locca setup        # pick "External" and paste the URL');
 
   return out.join('\n');
 }

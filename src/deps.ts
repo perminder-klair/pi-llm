@@ -4,7 +4,7 @@ import { have } from './util.js';
 
 export function requirePi(): void {
   if (have('pi')) return;
-  console.error(`pi-llm: 'pi' (coding agent) not found in PATH.
+  console.error(`locca: 'pi' (coding agent) not found in PATH.
 
 The 'pi' subcommand requires the pi CLI. Install it with:
   npm install -g @mariozechner/pi-coding-agent
@@ -20,11 +20,11 @@ need pi.`);
 
 export function requireLlama(cfg: Config): void {
   if (have(cfg.llamaServer)) return;
-  console.error(`pi-llm: '${cfg.llamaServer}' not found in PATH.
+  console.error(`locca: '${cfg.llamaServer}' not found in PATH.
 
 ${renderLlamaInstallHint()}
 
 If you built llama.cpp elsewhere, set llamaServer / llamaCli in
-~/.config/pi-llm/config.json to absolute paths.`);
+~/.config/locca/config.json to absolute paths.`);
   process.exit(1);
 }

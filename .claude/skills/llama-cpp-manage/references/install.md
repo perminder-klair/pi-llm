@@ -111,16 +111,16 @@ For Intel Macs with discrete GPU, OpenCL is dead in llama.cpp; Metal works on ma
 
 ## After the build
 
-The four binaries that pi-llm cares about:
+The four binaries that locca cares about:
 
 | Binary | What it does |
 |---|---|
 | `llama-server` | OpenAI-compatible HTTP server (port 8080 default) |
 | `llama-cli` | Interactive CLI chat (one-shot or `-cnv` mode) |
-| `llama-bench` | Throughput benchmark (the one pi-llm bench uses) |
+| `llama-bench` | Throughput benchmark (the one locca bench uses) |
 | `llama-quantize` | Convert one quant to another (rarely needed) |
 
-If `~/llama.cpp/build/bin` isn't in PATH, set absolute paths in `~/.config/pi-llm/config.json`:
+If `~/llama.cpp/build/bin` isn't in PATH, set absolute paths in `~/.config/locca/config.json`:
 
 ```json
 {
@@ -160,5 +160,5 @@ The `backend` line should say `Vulkan` (or `Metal`/`CUDA`/`ROCm`) — if it says
 
 - **Built on one machine, copied to another.** llama.cpp uses `-march=native` by default, which embeds the CPU feature set into the binary. Moving the binary to a CPU without those features → `Illegal instruction` at startup. Solution: build on the deploy host, or set `-DGGML_NATIVE=OFF` and pick a conservative target.
 - **NVIDIA + Vulkan.** Works, but the NVIDIA proprietary driver is required. The open-source Nouveau driver does *not* support Vulkan compute well enough.
-- **Multiple GPUs.** `--main-gpu N` and `--tensor-split a,b,c` flags split work across devices. pi-llm doesn't expose these — power users edit `src/server.ts:buildServerArgs` or override via env.
+- **Multiple GPUs.** `--main-gpu N` and `--tensor-split a,b,c` flags split work across devices. locca doesn't expose these — power users edit `src/server.ts:buildServerArgs` or override via env.
 - **Old gcc on RHEL/CentOS.** llama.cpp needs C++17 minimum; gcc 8+ on RHEL 8. If `make` fails on `<filesystem>` or similar, the toolchain is too old. Solution: enable EPEL or `scl enable gcc-toolset-12`.

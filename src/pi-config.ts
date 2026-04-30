@@ -3,11 +3,11 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 
 /**
- * Reserved provider key for entries pi-llm manages. Anything else in the
+ * Reserved provider key for entries locca manages. Anything else in the
  * user's models.json is left alone so they can keep their own custom
  * providers.
  */
-export const PI_PROVIDER_KEY = 'pi-llm';
+export const PI_PROVIDER_KEY = 'locca';
 
 interface PiModel {
   id: string;
@@ -41,8 +41,8 @@ export function piModelsJsonPath(): string {
 }
 
 /**
- * Ensure `~/.pi/agent/models.json` has an entry for the model pi-llm is
- * about to launch. Writes only the `pi-llm` provider key — leaves any
+ * Ensure `~/.pi/agent/models.json` has an entry for the model locca is
+ * about to launch. Writes only the `locca` provider key — leaves any
  * other providers/models the user has registered untouched.
  *
  * Pi 0.70+ requires custom providers to be registered here; the older
@@ -88,7 +88,7 @@ export function ensurePiModelsJson(
   else models.push(modelEntry);
 
   config.providers[PI_PROVIDER_KEY] = {
-    name: 'pi-llm (local llama.cpp)',
+    name: 'locca (local llama.cpp)',
     baseUrl,
     api: 'openai-completions',
     apiKey: 'unused',

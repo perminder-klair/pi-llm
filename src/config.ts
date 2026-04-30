@@ -5,8 +5,8 @@ import type { Config } from './types.js';
 import { autoThreads } from './util.js';
 
 const CONFIG_DIR = process.env.XDG_CONFIG_HOME
-  ? join(process.env.XDG_CONFIG_HOME, 'pi-llm')
-  : join(homedir(), '.config', 'pi-llm');
+  ? join(process.env.XDG_CONFIG_HOME, 'locca')
+  : join(homedir(), '.config', 'locca');
 
 export const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 

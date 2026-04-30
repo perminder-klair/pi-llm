@@ -6,7 +6,7 @@ import { note, pc } from '../ui.js';
 export async function logs(): Promise<void> {
   if (!existsSync(LOGFILE) || statSync(LOGFILE).size === 0) {
     note(
-      `No log at ${LOGFILE} (only servers started via 'pi-llm pi' write here).`,
+      `No log at ${LOGFILE} (only servers started via 'locca pi' write here).`,
     );
     return;
   }

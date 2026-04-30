@@ -1,24 +1,24 @@
 ---
 name: llama-cpp-manage
-description: Install, configure, troubleshoot, and operate llama.cpp on Linux or macOS — covers source builds (Debian/Ubuntu apt deps, Arch pacman, Fedora/openSUSE/Alpine, macOS brew), GPU backend selection (Vulkan / Metal / ROCm / CUDA), server lifecycle (port conflicts, health probes, detached vs foreground), pi-coding-agent integration via `~/.pi/agent/models.json`, and per-model tuning (ctx, sampling, vision mmproj, GGUF metadata). USE THIS SKILL whenever the user mentions llama-server, llama-cli, llama-bench, llama.cpp build errors, "my model won't load", "the server failed to start", GGUF files, an OpenAI-compatible local server, port conflicts on 8080/8081, or trouble with the pi coding agent against a local model — even if they don't say "llama.cpp" by name. The user's primary CLI is pi-llm; treat it as the frontend and llama.cpp as the runtime it manages.
+description: Install, configure, troubleshoot, and operate llama.cpp on Linux or macOS — covers source builds (Debian/Ubuntu apt deps, Arch pacman, Fedora/openSUSE/Alpine, macOS brew), GPU backend selection (Vulkan / Metal / ROCm / CUDA), server lifecycle (port conflicts, health probes, detached vs foreground), pi-coding-agent integration via `~/.pi/agent/models.json`, and per-model tuning (ctx, sampling, vision mmproj, GGUF metadata). USE THIS SKILL whenever the user mentions llama-server, llama-cli, llama-bench, llama.cpp build errors, "my model won't load", "the server failed to start", GGUF files, an OpenAI-compatible local server, port conflicts on 8080/8081, or trouble with the pi coding agent against a local model — even if they don't say "llama.cpp" by name. The user's primary CLI is locca; treat it as the frontend and llama.cpp as the runtime it manages.
 ---
 
 # llama.cpp on Linux / macOS — operations runbook
 
-This skill is the institutional knowledge that goes alongside [pi-llm](../../..) — the TUI that runs llama.cpp, manages models, and launches the `pi` coding agent against a local server. pi-llm handles the happy path; this skill is the runbook for *everything else*: installation, troubleshooting, tuning, and integration with adjacent tools.
+This skill is the institutional knowledge that goes alongside [locca](../../..) — the TUI that runs llama.cpp, manages models, and launches the `pi` coding agent against a local server. locca handles the happy path; this skill is the runbook for *everything else*: installation, troubleshooting, tuning, and integration with adjacent tools.
 
 ## When you're helping the user
 
 Before changing anything, get a clean read on **state** (what's installed, what's running). The most useful starting points:
 
 ```bash
-pi-llm status           # server source (pid/external/attached), llama.cpp path, models dir
-pi-llm api              # if a server is up, get URL + LAN/Tailscale URLs + endpoints
+locca status           # server source (pid/external/attached), llama.cpp path, models dir
+locca api              # if a server is up, get URL + LAN/Tailscale URLs + endpoints
 which llama-server      # is the binary on PATH, and where?
 ss -tlnp | grep ':8081' # is something else on the port?
 ```
 
-Hit `/health`, `/props`, and `/slots` directly when you need ground truth (`pi-llm status` already does `/props` for ctx + slot count, but you may want raw data):
+Hit `/health`, `/props`, and `/slots` directly when you need ground truth (`locca status` already does `/props` for ctx + slot count, but you may want raw data):
 
 ```bash
 curl -s http://127.0.0.1:8081/health
@@ -26,10 +26,10 @@ curl -s http://127.0.0.1:8081/props | jq '.default_generation_settings.params | 
 curl -s http://127.0.0.1:8081/slots
 ```
 
-Logs for a pi-llm-managed server:
+Logs for a locca-managed server:
 
 ```bash
-tail -f "${XDG_RUNTIME_DIR:-/tmp}/pi-llm-server.log"   # or: pi-llm logs
+tail -f "${XDG_RUNTIME_DIR:-/tmp}/locca-server.log"   # or: locca logs
 ```
 
 ## Installing llama.cpp
@@ -57,7 +57,7 @@ export PATH="$HOME/llama.cpp/build/bin:$PATH"                  # this session
 echo 'export PATH="$HOME/llama.cpp/build/bin:$PATH"' >> ~/.bashrc   # persist
 ```
 
-`pi-llm setup` already renders the right install hint per detected distro — if the user is fresh, prefer running that over hand-typing instructions. If they hit a build error, see `references/install.md` for the gotchas.
+`locca setup` already renders the right install hint per detected distro — if the user is fresh, prefer running that over hand-typing instructions. If they hit a build error, see `references/install.md` for the gotchas.
 
 ### Common build errors and fixes
 
@@ -85,7 +85,7 @@ ss -tlnp | grep ':<port> '
 curl -sI http://127.0.0.1:<port>/   # often reveals the conflicting service via Server header / page title
 ```
 
-Port 8080 is a frequent collision because many self-hosted apps default to it. Fix by changing pi-llm's `defaultPort` in `~/.config/pi-llm/config.json` to a free port (8081 and 18080 are common alternatives). pi-llm has a preflight check (`refuseIfPortTaken` in `src/preflight.ts`) that names the conflicting service via its Server header / page `<title>` — but only fires *before* spawning, so a llama-server that crashed mid-startup won't show this.
+Port 8080 is a frequent collision because many self-hosted apps default to it. Fix by changing locca's `defaultPort` in `~/.config/locca/config.json` to a free port (8081 and 18080 are common alternatives). locca has a preflight check (`refuseIfPortTaken` in `src/preflight.ts`) that names the conflicting service via its Server header / page `<title>` — but only fires *before* spawning, so a llama-server that crashed mid-startup won't show this.
 
 **2. Source build is broken / out of date.** The `build_info` line in the log starts with `b<NNNN>-<commit>` — if it's months old and `git log --oneline -1` in `~/llama.cpp` shows the source has moved on, rebuild:
 
@@ -104,15 +104,15 @@ No GPU listed → fall back to CPU build by re-running cmake without `-DGGML_VUL
 
 ## When pi can't see the model
 
-pi 0.70+ removed the built-in `--provider llamacpp` flag. Local OpenAI-compatible servers are now registered as a **custom provider** in `~/.pi/agent/models.json`. pi-llm writes this file automatically before launching pi, but if pi reports `Unknown provider "llamacpp"` from a script bypassing pi-llm, the registration is missing.
+pi 0.70+ removed the built-in `--provider llamacpp` flag. Local OpenAI-compatible servers are now registered as a **custom provider** in `~/.pi/agent/models.json`. locca writes this file automatically before launching pi, but if pi reports `Unknown provider "llamacpp"` from a script bypassing locca, the registration is missing.
 
 Minimal valid `~/.pi/agent/models.json`:
 
 ```json
 {
   "providers": {
-    "pi-llm": {
-      "name": "pi-llm (local llama.cpp)",
+    "locca": {
+      "name": "locca (local llama.cpp)",
       "baseUrl": "http://127.0.0.1:8081/v1",
       "api": "openai-completions",
       "apiKey": "unused",
@@ -132,39 +132,39 @@ Minimal valid `~/.pi/agent/models.json`:
 }
 ```
 
-Then `pi --model pi-llm/<model-id>`. The `id` must match what `curl http://127.0.0.1:8081/v1/models | jq '.data[0].id'` returns — usually the full GGUF filename.
+Then `pi --model locca/<model-id>`. The `id` must match what `curl http://127.0.0.1:8081/v1/models | jq '.data[0].id'` returns — usually the full GGUF filename.
 
-If the user has *other* providers registered, only touch the `pi-llm` key — that's the one pi-llm owns. See `src/pi-config.ts` in the pi-llm source for the canonical writer.
+If the user has *other* providers registered, only touch the `locca` key — that's the one locca owns. See `src/pi-config.ts` in the locca source for the canonical writer.
 
 ## Server lifecycle modes
 
-pi-llm has three ways the server can be running, exposed in `pi-llm status` as the `source` field:
+locca has three ways the server can be running, exposed in `locca status` as the `source` field:
 
-| Source | Meaning | `pi-llm stop` | `pi-llm serve` |
+| Source | Meaning | `locca stop` | `locca serve` |
 |---|---|---|---|
-| `pid` | pi-llm spawned and tracks the PID | works | refuses (server already running) |
-| `external` | `serverUrl` is set in config; pi-llm only talks to it | refuses (not ours) | refuses (would conflict) |
-| `attached` | something else (a manually started llama-server, another supervisor) is on the local port — pi-llm probed `/health` and uses it as a read-only client | refuses (not ours) | refuses (port taken) |
+| `pid` | locca spawned and tracks the PID | works | refuses (server already running) |
+| `external` | `serverUrl` is set in config; locca only talks to it | refuses (not ours) | refuses (would conflict) |
+| `attached` | something else (a manually started llama-server, another supervisor) is on the local port — locca probed `/health` and uses it as a read-only client | refuses (not ours) | refuses (port taken) |
 
-The most surprising one is `attached`. If a llama-server is already running on pi-llm's `defaultPort` (started by hand, by another supervisor, or by an external tool), pi-llm will *attach* to it and `pi-llm pi` works without spawning a duplicate that would fight for VRAM. To swap to a pi-llm-spawned server, the existing one has to be stopped first by whatever started it.
+The most surprising one is `attached`. If a llama-server is already running on locca's `defaultPort` (started by hand, by another supervisor, or by an external tool), locca will *attach* to it and `locca pi` works without spawning a duplicate that would fight for VRAM. To swap to a locca-spawned server, the existing one has to be stopped first by whatever started it.
 
-For an externally-managed server on a different port or another host, set `serverUrl` in `~/.config/pi-llm/config.json`:
+For an externally-managed server on a different port or another host, set `serverUrl` in `~/.config/locca/config.json`:
 
 ```json
 { "serverUrl": "http://localhost:8081" }
 ```
 
-This switches pi-llm into external-mode for *all* commands; `serve`/`stop`/`logs` start refusing because there's nothing for them to do.
+This switches locca into external-mode for *all* commands; `serve`/`stop`/`logs` start refusing because there's nothing for them to do.
 
 ## Foreground vs detached
 
-`pi-llm serve` runs llama-server **detached** by default (writes to log file, exits with the PID). This is intentional — Ctrl-C'ing pi-llm doesn't kill the server. To stop, use `pi-llm stop`. To watch logs, use `pi-llm logs` (which tails `${XDG_RUNTIME_DIR:-/tmp}/pi-llm-server.log`).
+`locca serve` runs llama-server **detached** by default (writes to log file, exits with the PID). This is intentional — Ctrl-C'ing locca doesn't kill the server. To stop, use `locca stop`. To watch logs, use `locca logs` (which tails `${XDG_RUNTIME_DIR:-/tmp}/locca-server.log`).
 
-If the user complains "the server stops when I close my terminal" they're probably running llama-server directly; suggest `pi-llm serve` or wrap their command in `nohup`/`systemd`.
+If the user complains "the server stops when I close my terminal" they're probably running llama-server directly; suggest `locca serve` or wrap their command in `nohup`/`systemd`.
 
 ## Per-model tuning
 
-pi-llm picks reasonable defaults but several knobs matter for quality on a given GPU:
+locca picks reasonable defaults but several knobs matter for quality on a given GPU:
 
 ### Context window
 
@@ -179,13 +179,13 @@ pi-llm picks reasonable defaults but several knobs matter for quality on a given
 | 3–9B dense | 131072 (128k) |
 | Other / unrecognised | 32768 (default) |
 
-Bigger ctx = larger KV cache = more VRAM. q8_0 KV cache (pi-llm's default) is 4× smaller than f16 — that's the only reason 128k fits on a 16GB iGPU for an 8B model. If the user OOMs, halving ctx is the first lever, then dropping to a smaller quant.
+Bigger ctx = larger KV cache = more VRAM. q8_0 KV cache (locca's default) is 4× smaller than f16 — that's the only reason 128k fits on a 16GB iGPU for an 8B model. If the user OOMs, halving ctx is the first lever, then dropping to a smaller quant.
 
 If a model isn't getting matched correctly, check `src/models.ts` — the regex uses negative lookahead/lookbehind to avoid e.g. "9B" matching "32B" via substring. Add a new bucket if needed.
 
 ### Sampling parameters
 
-llama-server reads sampling defaults from the **GGUF metadata** when `--jinja` is on (pi-llm always sets it). For example, Gemma 4 GGUFs embed `temp=1.0, top_p=0.95, top_k=64` and llama-server picks those up — pi-llm doesn't override. The user can verify via `/props`:
+llama-server reads sampling defaults from the **GGUF metadata** when `--jinja` is on (locca always sets it). For example, Gemma 4 GGUFs embed `temp=1.0, top_p=0.95, top_k=64` and llama-server picks those up — locca doesn't override. The user can verify via `/props`:
 
 ```bash
 curl -s http://127.0.0.1:8081/props | jq '.default_generation_settings.params | {temperature, top_p, top_k, min_p}'
@@ -195,11 +195,11 @@ If a model card recommends different sampling, the user has two options: (1) ove
 
 ### Vision (mmproj)
 
-Multimodal models (Gemma 4, Llava, Bakllava, etc.) ship a separate `mmproj-*.gguf` projector file. Drop it as a sibling in the same directory as the main GGUF and pi-llm auto-detects (see `scanModels` in `src/models.ts`) — it tags the model with `[vision]` in pickers and passes `--mmproj <path>` to llama-server.
+Multimodal models (Gemma 4, Llava, Bakllava, etc.) ship a separate `mmproj-*.gguf` projector file. Drop it as a sibling in the same directory as the main GGUF and locca auto-detects (see `scanModels` in `src/models.ts`) — it tags the model with `[vision]` in pickers and passes `--mmproj <path>` to llama-server.
 
-If the user downloaded only the main file, vision won't work. `pi-llm download <repo>` shows the mmproj as an optional second download.
+If the user downloaded only the main file, vision won't work. `locca download <repo>` shows the mmproj as an optional second download.
 
-## Useful files in the pi-llm source
+## Useful files in the locca source
 
 When debugging behaviour, these are the load-bearing files:
 
@@ -214,16 +214,16 @@ When debugging behaviour, these are the load-bearing files:
 
 ## Diagnostic commands
 
-When in doubt, run the bundled `scripts/diagnose.sh` for a one-shot health snapshot covering distro, llama.cpp binaries, pi-llm config, server `/health` + `/v1/models` + `/props`, PID file state, models dir size, pi agent registration, and Vulkan device list. It's read-only — never starts or stops anything.
+When in doubt, run the bundled `scripts/diagnose.sh` for a one-shot health snapshot covering distro, llama.cpp binaries, locca config, server `/health` + `/v1/models` + `/props`, PID file state, models dir size, pi agent registration, and Vulkan device list. It's read-only — never starts or stops anything.
 
 The script lives next to this `SKILL.md`; run it with the absolute path the skill was loaded from, or copy-paste the relevant pieces inline. The full set of probes it does (in order):
 
 1. `/etc/os-release` for distro detection
 2. `command -v llama-server` etc. for binary discovery
-3. `~/.config/pi-llm/config.json` parse via `jq`
+3. `~/.config/locca/config.json` parse via `jq`
 4. `curl /health`, `/v1/models`, `/props` on the configured port
 5. `ss -tln` if /health fails — to see if a non-llama service is squatting the port
-6. `${XDG_RUNTIME_DIR}/pi-llm-server.pid` for managed-server status
+6. `${XDG_RUNTIME_DIR}/locca-server.pid` for managed-server status
 7. Models dir count + size
 8. `~/.pi/agent/models.json` providers list
 9. `vulkaninfo --summary` for GPU detection

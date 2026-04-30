@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build / run
 
-- `npm run build` — `tsc` → `dist/`. The published `bin/pi-llm` shim just imports `dist/cli.js`, so **a build is required for any source change to take effect**.
+- `npm run build` — `tsc` → `dist/`. The published `bin/locca` shim just imports `dist/cli.js`, so **a build is required for any source change to take effect**.
 - `npm run dev` — `tsc --watch`.
-- `npm start` — runs `node bin/pi-llm` (uses whatever's already in `dist/`).
+- `npm start` — runs `node bin/locca` (uses whatever's already in `dist/`).
 - `npm link` — install the CLI globally from a checkout for end-to-end testing.
 - No test runner, no linter, no formatter is configured. `tsconfig.json` runs `strict: true`.
 
@@ -22,11 +22,11 @@ Every command that needs an LLM calls `serverStatus(cfg)`, which classifies the 
 
 | `source`   | Meaning                                                  | Allowed to stop? |
 |------------|----------------------------------------------------------|------------------|
-| `pid`      | pi-llm spawned it (PIDFILE in `$XDG_RUNTIME_DIR`)        | yes              |
+| `pid`      | locca spawned it (PIDFILE in `$XDG_RUNTIME_DIR`)        | yes              |
 | `external` | `cfg.serverUrl` is set and reachable                     | no               |
 | `attached` | No PIDFILE, but `/health` responds on `cfg.defaultPort`  | no               |
 
-`attached` is the "a `llama-server` started outside pi-llm (by hand, another supervisor, another tool) is already on the port" case — pi-llm uses it but refuses to manage it. `stop`/`serve`/`logs` short-circuit when source is `external` or `attached`.
+`attached` is the "a `llama-server` started outside locca (by hand, another supervisor, another tool) is already on the port" case — locca uses it but refuses to manage it. `stop`/`serve`/`logs` short-circuit when source is `external` or `attached`.
 
 `refuseIfPortTaken()` (`src/preflight.ts`) runs *after* `serverStatus()` and only fires when the port is occupied by something that does **not** answer `/health` — i.e. a non-llama service. Don't reorder these: `serverStatus` must run first so the "attached" case isn't misreported as a conflict.
 
@@ -42,13 +42,13 @@ Every command that needs an LLM calls `serverStatus(cfg)`, which classifies the 
 
 ### Pi integration — `src/commands/pi.ts` + `src/pi-config.ts`
 
-Pi 0.70+ removed `--provider llamacpp` and now requires custom OpenAI-compatible servers to be registered in `~/.pi/agent/models.json`. `ensurePiModelsJson()` rewrites the `pi-llm` provider entry on every launch so the model id and `baseUrl` always match the live server. **Do not touch other providers in that file** — only the `pi-llm` key is owned by us.
+Pi 0.70+ removed `--provider llamacpp` and now requires custom OpenAI-compatible servers to be registered in `~/.pi/agent/models.json`. `ensurePiModelsJson()` rewrites the `locca` provider entry on every launch so the model id and `baseUrl` always match the live server. **Do not touch other providers in that file** — only the `locca` key is owned by us.
 
 The `pi` command branches on three states: external server (use as-is, ignore any model pattern), attached server (use the model it reports, warn if it doesn't match the user's pattern), or local mode (spawn/switch via `launchServer()` + `waitReady()`).
 
 ### Config — `src/config.ts`
 
-`~/.config/pi-llm/config.json` (or `$XDG_CONFIG_HOME/pi-llm/`). Written with `mode 0o600`. `loadConfig()` merges over `defaults()` so missing keys (e.g. older configs that predate `serverUrl`) keep working without migration. The `serverUrl` field is the kill switch that turns on external mode globally.
+`~/.config/locca/config.json` (or `$XDG_CONFIG_HOME/locca/`). Written with `mode 0o600`. `loadConfig()` merges over `defaults()` so missing keys (e.g. older configs that predate `serverUrl`) keep working without migration. The `serverUrl` field is the kill switch that turns on external mode globally.
 
 ### Distro detection — `src/distro.ts`
 

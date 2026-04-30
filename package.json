@@ -1,10 +1,10 @@
 {
-  "name": "pi-llm",
+  "name": "locca",
   "version": "0.1.0",
   "description": "TUI for managing local LLM inference with llama.cpp",
   "type": "module",
   "bin": {
-    "pi-llm": "./bin/pi-llm"
+    "locca": "./bin/locca"
   },
   "files": [
     "bin",
@@ -21,7 +21,7 @@
     "clean": "rm -rf dist",
     "build": "npm run clean && tsc",
     "dev": "tsc --watch",
-    "start": "node bin/pi-llm",
+    "start": "node bin/locca",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -36,7 +36,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/perminder-klair/pi-llm.git"
+    "url": "https://github.com/perminder-klair/locca.git"
   },
   "dependencies": {
     "@clack/prompts": "^0.8.2",

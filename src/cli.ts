@@ -4,7 +4,7 @@ const cmd = process.argv[2];
 const rest = process.argv.slice(3);
 
 function printHelp(): void {
-  console.log(`Usage: pi-llm [command]
+  console.log(`Usage: locca [command]
 
 Inference:
   serve       Start API server with a model (detached)
@@ -114,7 +114,7 @@ async function dispatch(): Promise<void> {
     }
     default:
       console.error(`Unknown command: ${cmd}`);
-      console.error(`Run 'pi-llm help' for usage.`);
+      console.error(`Run 'locca help' for usage.`);
       process.exit(1);
   }
 }

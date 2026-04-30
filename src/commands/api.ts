@@ -3,7 +3,7 @@ import { serverStatus } from '../server.js';
 import { pc } from '../ui.js';
 import { networkAddresses } from '../util.js';
 
-/** `pi-llm api` — print OpenAI-compatible connection info for the local server. */
+/** `locca api` — print OpenAI-compatible connection info for the local server. */
 export async function api(): Promise<void> {
   const cfg = loadConfig();
   const status = await serverStatus(cfg);
@@ -21,7 +21,7 @@ export async function api(): Promise<void> {
     live = true;
     sourceLabel =
       status.source === 'pid'
-        ? `pi-llm (pid ${status.pid})`
+        ? `locca (pid ${status.pid})`
         : status.source === 'external'
           ? 'external (configured serverUrl)'
           : 'attached (external process on local port)';

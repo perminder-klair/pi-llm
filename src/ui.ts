@@ -1,7 +1,7 @@
 import * as p from '@clack/prompts';
 import pc from 'picocolors';
 
-export function header(title = 'pi-llm  ·  local inference') {
+export function header(title = 'locca  ·  local inference') {
   console.log();
   console.log(`  ${pc.magenta(pc.bold(title))}`);
   console.log();

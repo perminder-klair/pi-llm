@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync } from 'node:fs';
 import * as p from '@clack/prompts';
 import { allEntries, type CatalogEntry, defaultBuild } from './catalog.js';
@@ -9,6 +8,7 @@ import { CONFIG_FILE, loadConfig, saveConfig } from './config.js';
 import { detectDistro, renderLlamaInstallHint } from './distro.js';
 import { probeHardware } from './hardware.js';
 import { scanModels } from './models.js';
+import { renderPiInstallHint, tryInstallPi } from './pi-install.js';
 import { exitIfCancelled, pc, printBanner } from './ui.js';
 import { autoThreads, expandHome, have } from './util.js';
 
@@ -374,41 +374,3 @@ function pickBuildsForFirstRunMenu(budget: ReturnType<typeof memoryBudget>): Fir
   return rows;
 }
 
-const PI_PKG = '@mariozechner/pi-coding-agent';
-
-function renderPiInstallHint(): string {
-  return [
-    'Install pi with:',
-    `  ${pc.cyan(`npm install -g ${PI_PKG}`)}`,
-    'or via mise:',
-    `  ${pc.cyan(`mise use -g npm:${PI_PKG}`)}`,
-    '',
-    pc.dim('On Debian/Ubuntu the system nodejs may be too old — consider mise or NodeSource.'),
-  ].join('\n');
-}
-
-async function tryInstallPi(): Promise<void> {
-  if (have('mise')) {
-    const r = spawnSync('mise', ['use', '-g', `npm:${PI_PKG}`], {
-      stdio: 'inherit',
-    });
-    if (r.status === 0) {
-      p.log.success('Installed pi via mise');
-      return;
-    }
-    p.log.warn('mise install failed, trying npm...');
-  }
-
-  if (have('npm')) {
-    const r = spawnSync('npm', ['install', '-g', PI_PKG], { stdio: 'inherit' });
-    if (r.status === 0) {
-      p.log.success('Installed pi via npm');
-      return;
-    }
-    p.log.warn('npm install failed (may need sudo, or use a Node version manager).');
-  } else {
-    p.log.warn('Neither mise nor npm found.');
-  }
-
-  p.log.message(renderPiInstallHint());
-}

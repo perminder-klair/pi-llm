@@ -22,6 +22,7 @@ import { serve } from './commands/serve.js';
 import { stop } from './commands/stop.js';
 import { probeHardware } from './hardware.js';
 import { scanModels } from './models.js';
+import { tryInstallPi } from './pi-install.js';
 import { probeServerProps, serverStatus } from './server.js';
 import { MENU_BACK, exitIfCancelled, pc, printBanner, setMenuMode } from './ui.js';
 import { formatGB, have } from './util.js';
@@ -30,17 +31,21 @@ type Action =
   | 'pi'
   | 'serve'
   | 'switch'
-  | 'doctor'
-  | 'optimise'
-  | 'bench'
-  | 'logs'
   | 'download'
   | 'search'
   | 'delete'
   | 'stop'
-  | 'install-llama'
-  | 'config'
+  | 'settings'
   | 'quit';
+
+type SettingsAction =
+  | 'doctor'
+  | 'optimise'
+  | 'bench'
+  | 'logs'
+  | 'install'
+  | 'config'
+  | 'back';
 
 export async function menu(): Promise<void> {
   let firstRender = true;
@@ -63,24 +68,10 @@ export async function menu(): Promise<void> {
           value: 'switch',
           label: 'Switch   — swap server to a different model',
         },
-        {
-          value: 'doctor',
-          label: 'Doctor   — health check (hardware, server, log, config)',
-        },
-        {
-          value: 'optimise',
-          label: 'Optimise — ask pi to review and suggest tweaks',
-        },
-        { value: 'bench', label: 'Bench    — benchmark a model' },
-        { value: 'logs', label: 'Logs     — tail server log' },
         { value: 'download', label: 'Download — pull from HuggingFace' },
         { value: 'search', label: 'Search   — find models on HuggingFace' },
         { value: 'delete', label: 'Delete   — remove a model' },
-        {
-          value: 'install-llama',
-          label: 'Install  — download / update llama.cpp into ~/.locca',
-        },
-        { value: 'config', label: 'Config   — view / edit settings' },
+        { value: 'settings', label: 'Settings — doctor, optimise, bench, logs, install, config' },
         { value: 'quit', label: 'Quit' },
       ],
     });
@@ -205,18 +196,6 @@ async function runAction(action: Exclude<Action, 'quit'>): Promise<void> {
     case 'switch':
       await switchModel();
       break;
-    case 'doctor':
-      await doctor();
-      break;
-    case 'optimise':
-      await optimise();
-      break;
-    case 'bench':
-      await bench();
-      break;
-    case 'logs':
-      await logs();
-      break;
     case 'download':
       await download([]);
       break;
@@ -229,14 +208,105 @@ async function runAction(action: Exclude<Action, 'quit'>): Promise<void> {
     case 'stop':
       await stop();
       break;
-    case 'install-llama': {
-      const { installLlamaCommand } = await import('./commands/install-llama.js');
-      await installLlamaCommand([]);
+    case 'settings':
+      await runSettingsMenu();
       break;
-    }
+  }
+}
+
+async function runSettingsMenu(): Promise<void> {
+  const choice = await p.select<SettingsAction>({
+    message: 'Settings',
+    options: [
+      {
+        value: 'doctor',
+        label: 'Doctor   — health check (hardware, server, log, config)',
+      },
+      {
+        value: 'optimise',
+        label: 'Optimise — ask pi to review and suggest tweaks',
+      },
+      { value: 'bench', label: 'Bench    — benchmark a model' },
+      { value: 'logs', label: 'Logs     — tail server log' },
+      {
+        value: 'install',
+        label: 'Install  — install / update llama.cpp and/or pi',
+      },
+      { value: 'config', label: 'Config   — view / edit settings' },
+      { value: 'back', label: '← Back' },
+    ],
+  });
+  exitIfCancelled(choice);
+
+  switch (choice) {
+    case 'doctor':
+      await doctor();
+      break;
+    case 'optimise':
+      await optimise();
+      break;
+    case 'bench':
+      await bench();
+      break;
+    case 'logs':
+      await logs();
+      break;
+    case 'install':
+      await runInstallMenu();
+      break;
     case 'config':
       await config([]);
       break;
+    case 'back':
+      return;
+  }
+}
+
+/**
+ * Multiselect install picker: lets the user check llama.cpp and/or pi to
+ * install (or update) in one go. Status hints show whether each is already
+ * present so the user can tell at a glance what's missing.
+ */
+async function runInstallMenu(): Promise<void> {
+  const cfg = loadConfig();
+  const llamaPresent = have('llama-server') || have(cfg.llamaServer);
+  const piPresent = have('pi');
+
+  const llamaHint = cfg.llamaBundled
+    ? `installed — ${cfg.llamaBundled.version} · ${cfg.llamaBundled.backend} (re-installs latest)`
+    : llamaPresent
+      ? 'on PATH (will install locca-managed copy)'
+      : 'not installed';
+  const piHint = piPresent ? 'installed (re-installs latest)' : 'not installed';
+
+  const picks = await p.multiselect<'llama' | 'pi'>({
+    message: 'What would you like to install?',
+    options: [
+      {
+        value: 'llama',
+        label: 'llama.cpp — download / update prebuilt binary into ~/.locca',
+        hint: llamaHint,
+      },
+      {
+        value: 'pi',
+        label: 'pi        — coding agent (npm / mise)',
+        hint: piHint,
+      },
+    ],
+    required: false,
+  });
+  exitIfCancelled(picks);
+  if (picks.length === 0) {
+    p.log.message('Nothing selected.');
+    return;
+  }
+
+  if (picks.includes('llama')) {
+    const { installLlamaCommand } = await import('./commands/install-llama.js');
+    await installLlamaCommand([]);
+  }
+  if (picks.includes('pi')) {
+    await tryInstallPi();
   }
 }
 

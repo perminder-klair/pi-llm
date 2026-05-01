@@ -90,6 +90,40 @@ export async function describePortOccupant(
 }
 
 /**
+ * Probe `/props` for the values that don't show up in `/v1/models` —
+ * applied context window and slot count. Returns `{}` on any failure so the
+ * caller can render a partial status line without special-casing.
+ *
+ * Both fields are best-effort: older llama-server builds expose ctx under
+ * different keys, and `total_slots` only appears when the build supports
+ * multi-slot serving.
+ */
+export async function probeServerProps(
+  baseUrl: string,
+  timeoutMs = 1500,
+): Promise<{ ctx?: number; slots?: number }> {
+  try {
+    const r = await fetch(`${baseUrl.replace(/\/$/, '')}/props`, {
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!r.ok) return {};
+    const data = (await r.json()) as {
+      default_generation_settings?: { n_ctx?: number };
+      n_ctx?: number;
+      total_slots?: number;
+    };
+    const ctx = data.default_generation_settings?.n_ctx ?? data.n_ctx;
+    const slots = data.total_slots;
+    return {
+      ctx: typeof ctx === 'number' ? ctx : undefined,
+      slots: typeof slots === 'number' ? slots : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+/**
  * Probe a server's `/health` endpoint, optionally also fetching
  * `/v1/models` to discover the loaded model id.
  */

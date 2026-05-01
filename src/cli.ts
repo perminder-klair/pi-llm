@@ -26,8 +26,9 @@ Health:
   optimise    Have pi review the deployment and suggest tweaks (uses local model)
 
 Setup:
-  setup       Run the interactive setup wizard
-  config      View / edit settings (get, set, reset, path, list)
+  setup           Run the interactive setup wizard
+  install-llama   Download a prebuilt llama.cpp binary into ~/.locca
+  config          View / edit settings (get, set, reset, path, list)
 
 Run without arguments for the interactive menu.`);
 }
@@ -124,6 +125,12 @@ async function dispatch(): Promise<void> {
     case 'optimize': {
       const m = await import('./commands/optimise.js');
       await m.optimise();
+      return;
+    }
+    case 'install-llama':
+    case 'install': {
+      const m = await import('./commands/install-llama.js');
+      await m.installLlamaCommand(rest);
       return;
     }
     default:

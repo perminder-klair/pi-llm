@@ -53,17 +53,57 @@ export async function runSetup(): Promise<void> {
   }
 
   // ── llama.cpp presence check ────────────────────────────────────────
-  const llamaPresent = have('llama-server');
+  // Treat both PATH-found and the configured (potentially absolute)
+  // llamaServer as "present" — `have()` handles absolute paths since the
+  // bundled-install rewrite.
+  let llamaPresent = have('llama-server') || have(existing.llamaServer);
   const distro = detectDistro();
 
   if (llamaPresent) {
-    p.log.success(
-      `llama-server is on PATH — locca will spawn it for you ${pc.dim(`(detected ${distro.prettyName})`)}`,
-    );
+    if (existing.llamaBundled) {
+      p.log.success(
+        `llama.cpp is installed (locca-managed, ${existing.llamaBundled.version} · ${existing.llamaBundled.backend})`,
+      );
+    } else {
+      p.log.success(
+        `llama-server is on PATH — locca will spawn it for you ${pc.dim(`(detected ${distro.prettyName})`)}`,
+      );
+    }
   } else {
-    p.log.warn(
-      `llama-server NOT found in PATH ${pc.dim(`(detected ${distro.prettyName})`)} — install instructions at the end of setup.`,
-    );
+    p.log.warn(`llama-server NOT found in PATH ${pc.dim(`(detected ${distro.prettyName})`)}`);
+    const choice = await p.select<'auto' | 'manual' | 'skip'>({
+      message: 'How would you like to install it?',
+      initialValue: 'auto',
+      options: [
+        {
+          value: 'auto',
+          label: 'Let locca download a prebuilt binary',
+          hint: 'recommended — no compiling, no sudo',
+        },
+        {
+          value: 'manual',
+          label: "I'll install it myself",
+          hint: 'show distro install hint, continue setup',
+        },
+        { value: 'skip', label: 'Skip for now' },
+      ],
+    });
+    exitIfCancelled(choice);
+
+    if (choice === 'auto') {
+      try {
+        const { installLlamaInteractive } = await import('./commands/install-llama.js');
+        const ok = await installLlamaInteractive();
+        if (ok) llamaPresent = true;
+      } catch (e) {
+        p.log.error(`Install failed: ${(e as Error).message}`);
+      }
+    } else if (choice === 'manual') {
+      p.log.message(renderLlamaInstallHint());
+      p.log.message(
+        pc.dim('Setup will continue. Re-run `locca install-llama` later if you change your mind.'),
+      );
+    }
   }
 
   // Server defaults (port/ctx/threads).
@@ -154,12 +194,11 @@ export async function runSetup(): Promise<void> {
 
   if (!llamaPresent) {
     p.log.warn(
-      `${pc.bgYellow(pc.black(pc.bold(' ACTION REQUIRED ')))} ${pc.yellow(pc.bold('llama-server is not yet on PATH.'))}`,
+      `${pc.bgYellow(pc.black(pc.bold(' ACTION REQUIRED ')))} ${pc.yellow(pc.bold('llama-server is still not available.'))}`,
     );
-    p.log.message(renderLlamaInstallHint());
     p.log.message(
       pc.dim(
-        `If you built it elsewhere, set llamaServer/llamaCli in ${CONFIG_FILE} to absolute paths.`,
+        `Run ${pc.cyan('locca install-llama')} to download a prebuilt binary, or set llamaServer in ${CONFIG_FILE} to your own build.`,
       ),
     );
   }

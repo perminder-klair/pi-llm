@@ -8,21 +8,22 @@ export function autoThreads(): number {
 }
 
 export function have(cmd: string): boolean {
-  const path = process.env.PATH ?? '';
-  for (const dir of path.split(':')) {
-    if (!dir) continue;
-    try {
-      const full = join(dir, cmd);
-      const s = statSync(full);
-      if (s.isFile() && (s.mode & 0o111) !== 0) return true;
-    } catch {
-      // not in this dir
-    }
-  }
-  return false;
+  return which(cmd) !== null;
 }
 
 export function which(cmd: string): string | null {
+  // Absolute or relative paths get checked directly — locca writes
+  // absolute paths to `llamaServer` after `locca install-llama`, and
+  // those won't be found via PATH lookup.
+  if (cmd.includes('/') || cmd.includes('\\')) {
+    try {
+      const s = statSync(cmd);
+      if (s.isFile() && (s.mode & 0o111) !== 0) return cmd;
+    } catch {
+      // not present
+    }
+    return null;
+  }
   const path = process.env.PATH ?? '';
   for (const dir of path.split(':')) {
     if (!dir) continue;

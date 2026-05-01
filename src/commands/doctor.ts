@@ -59,11 +59,31 @@ function renderHardware(r: DoctorReport): void {
 function renderLlama(r: DoctorReport): void {
   console.log(`  ${pc.magenta(pc.bold('llama.cpp'))}`);
   if (!r.llamaServerPath) {
-    console.log(`    ${pc.red('not in PATH')}  ${pc.dim(`(looking for: ${r.cfg.llamaServer})`)}`);
+    console.log(`    ${pc.red('not found')}  ${pc.dim(`(looking for: ${r.cfg.llamaServer})`)}`);
+    console.log(
+      `    ${pc.dim('→ run')} ${pc.cyan('locca install-llama')} ${pc.dim('to download a prebuilt binary')}`,
+    );
     return;
   }
+  const sourceLabel =
+    r.llamaSource === 'locca-managed'
+      ? pc.green('locca-managed')
+      : r.llamaSource === 'system'
+        ? 'system (PATH)'
+        : r.llamaSource === 'custom'
+          ? 'custom path'
+          : pc.red('missing');
+  console.log(`    Source       ${sourceLabel}`);
   console.log(`    Path         ${r.llamaServerPath}`);
-  if (r.llamaServerVersion) {
+  if (r.cfg.llamaBundled && r.llamaSource === 'locca-managed') {
+    const update =
+      r.latestLlamaVersion && r.latestLlamaVersion !== r.cfg.llamaBundled.version
+        ? `  ${pc.cyan(`(update available: ${r.latestLlamaVersion})`)}`
+        : '';
+    console.log(
+      `    Version      ${r.cfg.llamaBundled.version}  ${pc.dim(`· ${r.cfg.llamaBundled.backend}`)}${update}`,
+    );
+  } else if (r.llamaServerVersion) {
     const firstLines = r.llamaServerVersion.split('\n').slice(0, 2).join('\n                 ');
     console.log(`    Version      ${firstLines}`);
   }

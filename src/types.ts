@@ -31,6 +31,23 @@ export interface Config {
    * the user types into `locca serve`. Leave unset for no cap.
    */
   vramBudgetMB?: number;
+  /**
+   * Metadata about a locca-managed llama.cpp install (downloaded by
+   * `locca install-llama`). When present, llamaServer/llamaCli/llamaBench
+   * point into ~/.locca/bin/llama-cpp/<dir>/. Used by doctor to report
+   * the source and offer updates, and by install-llama to clean up old
+   * versions.
+   */
+  llamaBundled?: {
+    /** Build tag from llama.cpp release, e.g. "b6814". */
+    version: string;
+    /** Backend label, e.g. "vulkan", "cuda", "metal", "cpu". */
+    backend: string;
+    /** Absolute path to the install directory. */
+    dir: string;
+    /** ISO timestamp of when this was installed. */
+    installedAt: string;
+  };
 }
 
 export interface Model {

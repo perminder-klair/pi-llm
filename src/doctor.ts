@@ -1,4 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { CONFIG_FILE, loadConfig } from './config.js';
 import { type HardwareInfo, probeHardware, readLlamaVersion } from './hardware.js';
 import { ctxCapForBudget, scanModels } from './models.js';
@@ -26,11 +28,17 @@ export interface LogWarning {
   example: string;
 }
 
+export type LlamaSource = 'system' | 'locca-managed' | 'custom' | 'missing';
+
 export interface DoctorReport {
   cfg: Config;
   hw: HardwareInfo;
   llamaServerPath: string | null;
   llamaServerVersion: string | null;
+  /** How locca is currently finding llama.cpp. */
+  llamaSource: LlamaSource;
+  /** Latest upstream release tag, if we could check (cached for 24h). */
+  latestLlamaVersion?: string;
   models: Model[];
   status: ServerStatus;
   liveCtx?: number;
@@ -46,6 +54,8 @@ export async function runDoctor(cfg: Config = loadConfig()): Promise<DoctorRepor
   const hw = probeHardware();
   const llamaServerPath = which(cfg.llamaServer);
   const llamaServerVersion = llamaServerPath ? readLlamaVersion(llamaServerPath) : null;
+  const llamaSource = classifyLlamaSource(cfg, llamaServerPath);
+  const latestLlamaVersion = await maybeCheckLatestRelease(llamaSource);
   const models = scanModels(cfg.modelsDir);
   const status = await serverStatus(cfg);
 
@@ -66,6 +76,8 @@ export async function runDoctor(cfg: Config = loadConfig()): Promise<DoctorRepor
     hw,
     llamaServerPath,
     llamaServerVersion,
+    llamaSource,
+    latestLlamaVersion,
     models,
     status,
     liveCtx,
@@ -79,6 +91,8 @@ export async function runDoctor(cfg: Config = loadConfig()): Promise<DoctorRepor
     hw,
     llamaServerPath,
     llamaServerVersion,
+    llamaSource,
+    latestLlamaVersion,
     models,
     status,
     liveCtx,
@@ -89,6 +103,76 @@ export async function runDoctor(cfg: Config = loadConfig()): Promise<DoctorRepor
     piHasLoccaProvider: piState.hasLocca,
     findings,
   };
+}
+
+function classifyLlamaSource(cfg: Config, resolvedPath: string | null): LlamaSource {
+  if (!resolvedPath) return 'missing';
+  if (cfg.llamaBundled && resolvedPath.startsWith(cfg.llamaBundled.dir)) {
+    return 'locca-managed';
+  }
+  // If the configured path is absolute and not the default bare 'llama-server',
+  // the user pointed at a custom build (homebrew tap, source build, etc.).
+  if (cfg.llamaServer !== 'llama-server' && cfg.llamaServer.includes('/')) {
+    return 'custom';
+  }
+  return 'system';
+}
+
+interface ReleaseCache {
+  tag_name: string;
+  fetchedAt: number;
+}
+
+/**
+ * Check the latest llama.cpp release tag from upstream, cached for 24h so
+ * `locca doctor` doesn't hit GitHub on every invocation. Best-effort: if
+ * the network fails, returns undefined and doctor just won't show "update
+ * available". Only runs when the source is locca-managed — for system /
+ * custom builds, distro/source updates aren't ours to nag about.
+ */
+async function maybeCheckLatestRelease(source: LlamaSource): Promise<string | undefined> {
+  if (source !== 'locca-managed') return undefined;
+
+  const cachePath = releaseCachePath();
+  const cached = readReleaseCache(cachePath);
+  if (cached && Date.now() - cached.fetchedAt < 24 * 60 * 60 * 1000) {
+    return cached.tag_name;
+  }
+  try {
+    const r = await fetch('https://api.github.com/repos/ggml-org/llama.cpp/releases/latest', {
+      headers: { 'User-Agent': 'locca-cli', Accept: 'application/vnd.github+json' },
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!r.ok) return cached?.tag_name;
+    const data = (await r.json()) as { tag_name?: string };
+    if (!data.tag_name) return cached?.tag_name;
+    writeReleaseCache(cachePath, { tag_name: data.tag_name, fetchedAt: Date.now() });
+    return data.tag_name;
+  } catch {
+    return cached?.tag_name;
+  }
+}
+
+function releaseCachePath(): string {
+  return join(homedir(), '.locca', '.cache', 'llama-release.json');
+}
+
+function readReleaseCache(path: string): ReleaseCache | null {
+  try {
+    const raw = readFileSync(path, 'utf8');
+    return JSON.parse(raw) as ReleaseCache;
+  } catch {
+    return null;
+  }
+}
+
+function writeReleaseCache(path: string, data: ReleaseCache): void {
+  try {
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, JSON.stringify(data));
+  } catch {
+    // Cache is best-effort; failing to write is fine.
+  }
 }
 
 async function fetchLiveCtx(baseUrl: string): Promise<{ ctx?: number; ctxTrain?: number } | null> {
@@ -201,6 +285,8 @@ interface CollectArgs {
   hw: HardwareInfo;
   llamaServerPath: string | null;
   llamaServerVersion: string | null;
+  llamaSource: LlamaSource;
+  latestLlamaVersion?: string;
   models: Model[];
   status: ServerStatus;
   liveCtx?: number;
@@ -217,8 +303,21 @@ function collectFindings(args: CollectArgs): Finding[] {
     out.push({
       severity: 'error',
       section: 'llama.cpp',
-      title: `${args.cfg.llamaServer} not found in PATH`,
-      suggestion: 'Run `locca setup` for install instructions.',
+      title: `${args.cfg.llamaServer} not found`,
+      suggestion:
+        'Run `locca install-llama` to download a prebuilt binary, or install via your package manager.',
+    });
+  } else if (
+    args.llamaSource === 'locca-managed' &&
+    args.cfg.llamaBundled &&
+    args.latestLlamaVersion &&
+    args.latestLlamaVersion !== args.cfg.llamaBundled.version
+  ) {
+    out.push({
+      severity: 'info',
+      section: 'llama.cpp',
+      title: `update available: ${args.cfg.llamaBundled.version} → ${args.latestLlamaVersion}`,
+      suggestion: 'Run `locca install-llama --update` to bump.',
     });
   }
 

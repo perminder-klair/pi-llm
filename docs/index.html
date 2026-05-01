@@ -691,18 +691,22 @@
           <div class="term-body">
             <div class="line"><span class="prompt">$</span> <span id="typed"></span><span class="caret" aria-hidden="true"></span></div>
             <div class="line" id="afterTyped" hidden>
-<span class="dim">┌  locca · running</span>
-<span class="dim">│</span>
-<span class="dim">◇</span>  <span class="ok">attached</span>  llama-server on :8080
-<span class="dim">│</span>            <span class="dim">qwen2.5-coder-7b-instruct-q4_k_m.gguf</span>
-<span class="dim">│</span>            <span class="dim">ctx 131072 · vulkan · 1 slot</span>
-<span class="dim">│</span>
+<span class="warn">  ██╗      ██████╗  ██████╗ ██████╗ █████╗</span>
+<span class="warn">  ██║     ██╔═══██╗██╔════╝██╔════╝██╔══██╗</span>
+<span class="warn">  ██║     ██║   ██║██║     ██║     ███████║</span>
+<span class="warn">  ███████╗╚██████╔╝╚██████╗╚██████╗██║  ██║</span>
+<span class="warn">  ╚══════╝ ╚═════╝  ╚═════╝ ╚═════╝╚═╝  ╚═╝</span>
+
+  <span class="ok">●</span> <b>attached  llama-server on :8080</b>
+            <span class="dim">Qwen3.5-9B-GGUF</span>
+            <span class="dim">ctx 131,072 · 1 slot</span>
+
 <span class="dim">◆</span>  what next?
-<span class="dim">│</span>  <span class="arrow">●</span> <span class="sel">launch pi against this server</span>
-<span class="dim">│</span>  <span class="dim">○ swap model & restart</span>
-<span class="dim">│</span>  <span class="dim">○ benchmark current model</span>
-<span class="dim">│</span>  <span class="dim">○ show api endpoints + LAN urls</span>
-<span class="dim">│</span>  <span class="dim">○ download a new GGUF from huggingface</span>
+<span class="dim">│</span>  <span class="arrow">●</span> <span class="sel">Pi       — coding agent (local)</span>
+<span class="dim">│</span>  <span class="dim">○ Switch   — swap server to a different model</span>
+<span class="dim">│</span>  <span class="dim">○ Bench    — benchmark a model</span>
+<span class="dim">│</span>  <span class="dim">○ Api      — show endpoints + LAN URLs</span>
+<span class="dim">│</span>  <span class="dim">○ Download — pull from HuggingFace</span>
 <span class="dim">└</span>
             </div>
           </div>
@@ -762,8 +766,8 @@
         <h2 id="install-title">Install.</h2>
         <p class="section-lede">
           One command, then a wizard. locca picks a models folder with
-          you, downloads a starter GGUF, and installs the pi coding
-          agent.
+          you, fetches llama.cpp if it’s missing, downloads a starter
+          GGUF, and installs the pi coding agent.
         </p>
 
         <div class="code-block" style="max-width:640px">
@@ -773,20 +777,28 @@
           <div class="ln">&nbsp;</div>
           <div class="ln"><span class="c"># first run launches a wizard that:</span></div>
           <div class="ln"><span class="c">#   1. picks a models folder</span></div>
-          <div class="ln"><span class="c">#   2. tunes port, ctx, threads, VRAM cap</span></div>
-          <div class="ln"><span class="c">#   3. offers a starter GGUF download</span></div>
-          <div class="ln"><span class="c">#   4. installs the pi coding agent</span></div>
+          <div class="ln"><span class="c">#   2. installs llama.cpp if you don't have it</span></div>
+          <div class="ln"><span class="c">#   3. tunes port, ctx, threads, VRAM cap</span></div>
+          <div class="ln"><span class="c">#   4. offers a starter GGUF download</span></div>
+          <div class="ln"><span class="c">#   5. installs the pi coding agent</span></div>
           <div class="ln">&nbsp;</div>
           <div class="ln"><span class="c"># re-run anytime: `locca setup`</span></div>
         </div>
 
         <div class="code-block" style="max-width:640px;margin-top:14px">
-          <div class="h">prerequisite · llama.cpp</div>
-          <div class="ln"><span class="c"># install via your package manager:</span></div>
-          <div class="ln"><span class="c">#   brew, pacman, apt, dnf, zypper, apk</span></div>
+          <div class="h">no llama.cpp? no problem</div>
+          <div class="ln"><span class="p">$</span> locca install-llama</div>
           <div class="ln">&nbsp;</div>
-          <div class="ln"><span class="c"># or skip ahead — locca prints the exact</span></div>
-          <div class="ln"><span class="c"># install line for your distro on first run.</span></div>
+          <div class="ln"><span class="c"># downloads a prebuilt binary from</span></div>
+          <div class="ln"><span class="c"># upstream into ~/.locca/bin/. Auto-</span></div>
+          <div class="ln"><span class="c"># detects your accelerator (Vulkan,</span></div>
+          <div class="ln"><span class="c"># CUDA, HIP, Metal, or CPU).</span></div>
+          <div class="ln">&nbsp;</div>
+          <div class="ln"><span class="c"># no sudo, no compiler, no system</span></div>
+          <div class="ln"><span class="c"># package needed. Already have</span></div>
+          <div class="ln"><span class="c"># llama.cpp on PATH? locca uses that.</span></div>
+          <div class="ln">&nbsp;</div>
+          <div class="ln"><span class="c"># update later: `locca install-llama --update`</span></div>
         </div>
       </div>
     </section>
@@ -814,6 +826,7 @@
           <li class="cmd-row"><code translate="no">locca search</code><span>Fuzzy-search HuggingFace for GGUF models.</span></li>
           <li class="cmd-row"><code translate="no">locca delete</code><span>Remove a model directory you no longer need.</span></li>
           <li class="cmd-row"><code translate="no">locca stop</code><span>Stop the running server.</span></li>
+          <li class="cmd-row"><code translate="no">locca install-llama</code><span>Download / update a prebuilt llama.cpp binary into <code translate="no" style="font-family:var(--mono)">~/.locca/bin</code>. Auto-detects backend.</span></li>
           <li class="cmd-row"><code translate="no">locca config</code><span>View / edit settings — get, set, reset, list, path.</span></li>
           <li class="cmd-row"><code translate="no">locca setup</code><span>Re-run the setup wizard.</span></li>
         </ul>

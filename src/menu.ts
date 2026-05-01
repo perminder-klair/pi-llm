@@ -22,7 +22,7 @@ import { serve } from './commands/serve.js';
 import { stop } from './commands/stop.js';
 import { probeHardware } from './hardware.js';
 import { scanModels } from './models.js';
-import { serverStatus } from './server.js';
+import { probeServerProps, serverStatus } from './server.js';
 import { MENU_BACK, exitIfCancelled, pc, printBanner, setMenuMode } from './ui.js';
 import { formatGB, have } from './util.js';
 
@@ -38,6 +38,7 @@ type Action =
   | 'search'
   | 'delete'
   | 'stop'
+  | 'install-llama'
   | 'config'
   | 'quit';
 
@@ -53,7 +54,7 @@ export async function menu(): Promise<void> {
     console.log();
 
     const action = await p.select<Action>({
-      message: 'What would you like to do?',
+      message: 'what next?',
       options: [
         { value: 'pi', label: 'Pi       — coding agent (local)' },
         { value: 'serve', label: 'Serve    — start API server' },
@@ -75,6 +76,10 @@ export async function menu(): Promise<void> {
         { value: 'download', label: 'Download — pull from HuggingFace' },
         { value: 'search', label: 'Search   — find models on HuggingFace' },
         { value: 'delete', label: 'Delete   — remove a model' },
+        {
+          value: 'install-llama',
+          label: 'Install  — download / update llama.cpp into ~/.locca',
+        },
         { value: 'config', label: 'Config   — view / edit settings' },
         { value: 'quit', label: 'Quit' },
       ],
@@ -125,8 +130,10 @@ async function pauseUntilEnter(): Promise<void> {
 }
 
 /**
- * Compact one-line server summary, shown above the menu so the user sees
- * what (if anything) is currently running before they pick an action.
+ * Three-line server summary, shown above the menu so the user sees what (if
+ * anything) is currently running before they pick an action. Probes /props
+ * for ctx + slot count — best-effort, missing fields are simply elided so a
+ * llama-server build that doesn't expose them still renders cleanly.
  */
 async function renderServerLine(): Promise<void> {
   const cfg = loadConfig();
@@ -135,12 +142,21 @@ async function renderServerLine(): Promise<void> {
     console.log(pc.dim('  ○ No server running'));
     return;
   }
-  const tag = s.source === 'pid' ? `pid ${s.pid}` : 'attached';
-  const bits: string[] = [];
-  if (s.model) bits.push(s.model);
-  bits.push(s.url);
-  bits.push(tag);
-  console.log(pc.green(`  ● Running: ${bits.join(', ')}`));
+  const sourceLabel = s.source === 'pid' ? `running  (pid ${s.pid})` : 'attached';
+  const head = `${sourceLabel}  llama-server on :${s.port}`;
+  console.log(`  ${pc.green('●')} ${pc.bold(head)}`);
+
+  if (s.model) {
+    console.log(`            ${pc.dim(s.model)}`);
+  }
+
+  const props = await probeServerProps(s.url);
+  const subBits: string[] = [];
+  if (props.ctx) subBits.push(`ctx ${props.ctx.toLocaleString('en-US')}`);
+  if (props.slots) subBits.push(`${props.slots} slot${props.slots === 1 ? '' : 's'}`);
+  if (subBits.length) {
+    console.log(`            ${pc.dim(subBits.join(' · '))}`);
+  }
 }
 
 /**
@@ -213,6 +229,11 @@ async function runAction(action: Exclude<Action, 'quit'>): Promise<void> {
     case 'stop':
       await stop();
       break;
+    case 'install-llama': {
+      const { installLlamaCommand } = await import('./commands/install-llama.js');
+      await installLlamaCommand([]);
+      break;
+    }
     case 'config':
       await config([]);
       break;

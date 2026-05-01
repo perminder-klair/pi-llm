@@ -18,15 +18,14 @@ Single-binary TypeScript ESM CLI (`type: "module"`, `module: NodeNext`). All `.j
 
 ### Server lifecycle — `src/server.ts`
 
-Every command that needs an LLM calls `serverStatus(cfg)`, which classifies the running server into one of three sources. **This distinction drives almost every decision elsewhere**:
+Every command that needs an LLM calls `serverStatus(cfg)`, which classifies the running server into one of two sources. **This distinction drives almost every decision elsewhere**:
 
 | `source`   | Meaning                                                  | Allowed to stop? |
 |------------|----------------------------------------------------------|------------------|
 | `pid`      | locca spawned it (PIDFILE in `$XDG_RUNTIME_DIR`)        | yes              |
-| `external` | `cfg.serverUrl` is set and reachable                     | no               |
 | `attached` | No PIDFILE, but `/health` responds on `cfg.defaultPort`  | no               |
 
-`attached` is the "a `llama-server` started outside locca (by hand, another supervisor, another tool) is already on the port" case — locca uses it but refuses to manage it. `stop`/`serve`/`logs` short-circuit when source is `external` or `attached`.
+`attached` is the "a `llama-server` started outside locca (by hand, another supervisor, another tool) is already on the port" case — locca uses it but refuses to manage it. `stop` short-circuits when source is `attached`.
 
 `refuseIfPortTaken()` (`src/preflight.ts`) runs *after* `serverStatus()` and only fires when the port is occupied by something that does **not** answer `/health` — i.e. a non-llama service. Don't reorder these: `serverStatus` must run first so the "attached" case isn't misreported as a conflict.
 
@@ -44,11 +43,11 @@ Every command that needs an LLM calls `serverStatus(cfg)`, which classifies the 
 
 Pi 0.70+ removed `--provider llamacpp` and now requires custom OpenAI-compatible servers to be registered in `~/.pi/agent/models.json`. `ensurePiModelsJson()` rewrites the `locca` provider entry on every launch so the model id and `baseUrl` always match the live server. **Do not touch other providers in that file** — only the `locca` key is owned by us.
 
-The `pi` command branches on three states: external server (use as-is, ignore any model pattern), attached server (use the model it reports, warn if it doesn't match the user's pattern), or local mode (spawn/switch via `launchServer()` + `waitReady()`).
+The `pi` command branches on two states: attached server (use the model it reports, warn if it doesn't match the user's pattern), or local mode (spawn/switch via `launchServer()` + `waitReady()`).
 
 ### Config — `src/config.ts`
 
-`~/.locca/config.json`. Written with `mode 0o600`. `loadConfig()` merges over `defaults()` so missing keys (e.g. older configs that predate `serverUrl`) keep working without migration. The `serverUrl` field is the kill switch that turns on external mode globally.
+`~/.locca/config.json`. Written with `mode 0o600`. `loadConfig()` merges over `defaults()` so older configs missing newer keys keep working without migration.
 
 ### Distro detection — `src/distro.ts`
 

@@ -47,13 +47,6 @@ const SCHEMA: Field[] = [
   { key: 'llamaCli', label: 'llama-cli binary', kind: 'string' },
   { key: 'llamaBench', label: 'llama-bench binary', kind: 'string' },
   {
-    key: 'serverUrl',
-    label: 'External server URL',
-    kind: 'string',
-    optional: true,
-    hint: 'set to use a remote llama.cpp instead of spawning one',
-  },
-  {
     key: 'vramBudgetMB',
     label: 'VRAM budget (MB)',
     kind: 'number',

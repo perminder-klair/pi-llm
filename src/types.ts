@@ -25,13 +25,6 @@ export interface Config {
    */
   piContextFiles?: boolean;
   /**
-   * Optional URL of an externally-managed llama.cpp server (e.g. one you
-   * started yourself, or one on another machine on your LAN). When set,
-   * locca uses this URL instead of spawning its own server. Commands
-   * like `serve`, `stop`, `logs` are disabled in this mode.
-   */
-  serverUrl?: string;
-  /**
    * Approximate VRAM budget in MB. Caps the context window that
    * `ctxForModel()` auto-picks per model so 128k defaults don't OOM on
    * smaller GPUs. Does NOT override an explicit `defaultCtx` or a ctx

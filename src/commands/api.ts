@@ -22,17 +22,7 @@ export async function api(): Promise<void> {
     sourceLabel =
       status.source === 'pid'
         ? `locca (pid ${status.pid})`
-        : status.source === 'external'
-          ? 'external (configured serverUrl)'
-          : 'attached (external process on local port)';
-  } else if (cfg.serverUrl) {
-    baseUrl = `${cfg.serverUrl.replace(/\/$/, '')}/v1`;
-    const u = new URL(cfg.serverUrl);
-    port = u.port
-      ? parseInt(u.port, 10)
-      : u.protocol === 'https:'
-        ? 443
-        : 80;
+        : 'attached (external process on local port)';
   } else {
     port = cfg.defaultPort;
     baseUrl = `http://localhost:${port}/v1`;
@@ -43,8 +33,6 @@ export async function api(): Promise<void> {
   console.log();
   if (live) {
     console.log(pc.green(`  ● Server is running — ${sourceLabel}`));
-  } else if (cfg.serverUrl) {
-    console.log(pc.yellow(`  ! Configured serverUrl is not responding`));
   } else {
     console.log(pc.dim(`  ○ No server running — showing defaults from config`));
   }

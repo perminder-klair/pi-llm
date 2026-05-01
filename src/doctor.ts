@@ -316,16 +316,6 @@ function collectFindings(args: CollectArgs): Finding[] {
       });
     }
   }
-  if (args.cfg.serverUrl && !args.status.running) {
-    out.push({
-      severity: 'error',
-      section: 'server',
-      title: `Configured serverUrl is unreachable: ${args.cfg.serverUrl}`,
-      suggestion:
-        'Start the external server, fix the URL via `locca setup`, or clear `serverUrl` to fall back to a local llama-server.',
-    });
-  }
-
   // ── Log warnings ──────────────────────────────────────────────────
   for (const w of args.logWarnings) {
     if (/outdated\s+\w+\s+chat\s+template/i.test(w.label)) {

@@ -1,25 +1,35 @@
-import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync } from 'node:fs';
-import * as p from '@clack/prompts';
-import { download } from './commands/download.js';
-import { searchHF } from './commands/search.js';
-import { CONFIG_FILE, loadConfig, saveConfig } from './config.js';
-import { detectDistro, renderLlamaInstallHint } from './distro.js';
-import { scanModels } from './models.js';
-import { exitIfCancelled, pc, printBanner } from './ui.js';
-import { autoThreads, expandHome, have } from './util.js';
+import { spawnSync } from "node:child_process";
+import { existsSync, mkdirSync } from "node:fs";
+import * as p from "@clack/prompts";
+import { allEntries, type CatalogEntry, defaultBuild } from "./catalog.js";
+import {
+  fitHint,
+  incompatibilitySummary,
+  isCompatible,
+  memoryBudget,
+} from "./compat.js";
+import { downloadCatalogEntry } from "./commands/download.js";
+import { searchHF } from "./commands/search.js";
+import { CONFIG_FILE, loadConfig, saveConfig } from "./config.js";
+import { detectDistro, renderLlamaInstallHint } from "./distro.js";
+import { probeHardware } from "./hardware.js";
+import { scanModels } from "./models.js";
+import { exitIfCancelled, pc, printBanner } from "./ui.js";
+import { autoThreads, expandHome, have } from "./util.js";
 
 export async function runSetup(): Promise<void> {
   printBanner({ tagline: true });
-  p.intro(`${pc.bgMagenta(pc.black(pc.bold(' locca ')))}  ${pc.magenta('setup')}`);
+  p.intro(
+    `${pc.bgMagenta(pc.black(pc.bold(" locca ")))}  ${pc.magenta("setup")}`,
+  );
   p.log.message(
     [
-      `${pc.magenta('▸')} Pick a models folder`,
-      `${pc.magenta('▸')} Confirm llama.cpp is installed ${pc.dim('(locca spawns it for you)')}`,
-      `${pc.magenta('▸')} Tune defaults ${pc.dim('(port, context, threads, VRAM budget)')}`,
-      '',
-      pc.dim('Saved to ~/.locca/config.json — re-run `locca setup` anytime.'),
-    ].join('\n'),
+      `${pc.magenta("▸")} Pick a models folder`,
+      `${pc.magenta("▸")} Confirm llama.cpp is installed ${pc.dim("(locca spawns it for you)")}`,
+      `${pc.magenta("▸")} Tune defaults ${pc.dim("(port, context, threads, VRAM budget)")}`,
+      "",
+      pc.dim("Saved to ~/.locca/config.json — re-run `locca setup` anytime."),
+    ].join("\n"),
   );
 
   const existing = loadConfig();
@@ -28,7 +38,7 @@ export async function runSetup(): Promise<void> {
 
   // Models directory
   const modelsDirIn = await p.text({
-    message: 'Where do you keep .gguf models?',
+    message: "Where do you keep .gguf models?",
     placeholder: existing.modelsDir,
     initialValue: existing.modelsDir,
   });
@@ -45,12 +55,12 @@ export async function runSetup(): Promise<void> {
       mkdirSync(modelsDir, { recursive: true });
       p.log.success(`Created ${modelsDir}`);
     } else {
-      p.log.warn('Skipped — locca will fail until this directory exists.');
+      p.log.warn("Skipped — locca will fail until this directory exists.");
     }
   }
 
   // ── llama.cpp presence check ────────────────────────────────────────
-  const llamaPresent = have('llama-server');
+  const llamaPresent = have("llama-server");
   const distro = detectDistro();
 
   if (llamaPresent) {
@@ -75,11 +85,14 @@ export async function runSetup(): Promise<void> {
   let threads = threadDefault;
 
   if (!useDefaults) {
-    const portIn = await p.text({ message: 'Port', initialValue: '8080' });
+    const portIn = await p.text({ message: "Port", initialValue: "8080" });
     exitIfCancelled(portIn);
     port = parseInt(portIn, 10) || 8080;
 
-    const ctxIn = await p.text({ message: 'Context size', initialValue: '32768' });
+    const ctxIn = await p.text({
+      message: "Context size",
+      initialValue: "32768",
+    });
     exitIfCancelled(ctxIn);
     ctx = parseInt(ctxIn, 10) || 32768;
 
@@ -120,7 +133,6 @@ export async function runSetup(): Promise<void> {
     defaultPort: port,
     defaultCtx: ctx,
     defaultThreads: threads,
-    serverUrl: undefined,
     vramBudgetMB,
     piSkills,
     piExtensions,
@@ -136,8 +148,8 @@ export async function runSetup(): Promise<void> {
   }
 
   // pi (coding agent)
-  if (have('pi')) {
-    p.log.success('pi (coding agent) found');
+  if (have("pi")) {
+    p.log.success("pi (coding agent) found");
   } else {
     const installPi = await p.confirm({
       message: "Install 'pi' coding agent now?",
@@ -149,7 +161,7 @@ export async function runSetup(): Promise<void> {
 
   if (!llamaPresent) {
     p.log.warn(
-      `${pc.bgYellow(pc.black(pc.bold(' ACTION REQUIRED ')))} ${pc.yellow(pc.bold('llama-server is not yet on PATH.'))}`,
+      `${pc.bgYellow(pc.black(pc.bold(" ACTION REQUIRED ")))} ${pc.yellow(pc.bold("llama-server is not yet on PATH."))}`,
     );
     p.log.message(renderLlamaInstallHint());
     p.log.message(
@@ -159,7 +171,7 @@ export async function runSetup(): Promise<void> {
     );
   }
 
-  p.outro(pc.green('Setup complete. Run `locca` to get started.'));
+  p.outro(pc.green("Setup complete. Run `locca` to get started."));
 }
 
 async function promptForVramBudget(
@@ -167,15 +179,19 @@ async function promptForVramBudget(
 ): Promise<number | undefined> {
   const initial = existing ?? 0;
   const choice = await p.select<number>({
-    message: 'Approximate VRAM budget? (caps auto-picked context window)',
+    message: "Approximate VRAM budget? (caps auto-picked context window)",
     initialValue: initial,
     options: [
-      { value: 0, label: 'Skip / unlimited', hint: 'no cap on auto-picked ctx' },
-      { value: 6 * 1024, label: '6 GB', hint: 'caps ctx to 8k' },
-      { value: 8 * 1024, label: '8 GB', hint: 'caps ctx to 16k' },
-      { value: 12 * 1024, label: '12 GB', hint: 'caps ctx to 32k' },
-      { value: 16 * 1024, label: '16 GB', hint: 'caps ctx to 64k (Strix Halo class)' },
-      { value: 24 * 1024, label: '24 GB or more', hint: 'no cap (full 128k)' },
+      {
+        value: 0,
+        label: "Skip / unlimited",
+        hint: "no cap on auto-picked ctx",
+      },
+      { value: 6 * 1024, label: "6 GB", hint: "caps ctx to 8k" },
+      { value: 8 * 1024, label: "8 GB", hint: "caps ctx to 16k" },
+      { value: 12 * 1024, label: "12 GB", hint: "caps ctx to 32k" },
+      { value: 16 * 1024, label: "16 GB", hint: "caps ctx to 64k" },
+      { value: 24 * 1024, label: "24 GB or more", hint: "no cap (full 128k)" },
     ],
   });
   exitIfCancelled(choice);
@@ -183,96 +199,172 @@ async function promptForVramBudget(
 }
 
 async function promptForFirstModel(): Promise<void> {
-  p.log.message('Your models directory is empty — locca needs a .gguf to run.');
+  p.log.message("Your models directory is empty — locca needs a .gguf to run.");
 
-  type Choice =
-    | 'gemma-e2b'
-    | 'qwen-0_8b'
-    | 'qwen-9b'
-    | 'qwen-moe'
-    | 'browse'
-    | 'skip';
-  const choice = await p.select<Choice>({
-    message: 'Grab a starter model now?',
-    initialValue: 'gemma-e2b',
-    options: [
-      {
-        value: 'gemma-e2b',
-        label: 'Gemma 4 E2B IT       — tiny, runs almost anywhere',
-        hint: 'smallest; good first model',
-      },
-      {
-        value: 'qwen-0_8b',
-        label: 'Qwen3.5 0.8B         — ultra-light, snappy on CPU',
-        hint: '~600 MB at Q4; great for low-RAM machines',
-      },
-      {
-        value: 'qwen-9b',
-        label: 'Qwen3.5 9B           — strong general / coding',
-        hint: '~6 GB at Q4; fits 8 GB VRAM',
-      },
-      {
-        value: 'qwen-moe',
-        label: 'Qwen3.6 35B-A3B MoE  — flagship, 3B active',
-        hint: 'big download but fast inference; needs ~20 GB',
-      },
-      { value: 'browse', label: 'Browse HuggingFace…', hint: 'search by name' },
-      { value: 'skip', label: 'Skip — add models later with `locca download`' },
-    ],
-  });
-  exitIfCancelled(choice);
+  const budget = memoryBudget(probeHardware());
+  p.log.message(
+    pc.dim(`  Detected ${budget.description} — using that to recommend a fit.`),
+  );
 
-  if (choice === 'skip') {
-    p.log.message('Add a model anytime with `locca download <repo>` or `locca search`.');
-    return;
-  }
+  // One row per (family, size) pick the catalog's preferred build (full-precision
+  // when it fits, otherwise the smallest quant). Showing one row per quant would
+  // explode the list and force the user to know quant tags.
+  const rows = pickBuildsForFirstRunMenu(budget);
 
-  try {
-    if (choice === 'gemma-e2b') {
-      await download(['unsloth/gemma-4-E2B-it-GGUF']);
-    } else if (choice === 'qwen-0_8b') {
-      await download(['unsloth/Qwen3.5-0.8B-GGUF']);
-    } else if (choice === 'qwen-9b') {
-      await download(['unsloth/Qwen3.5-9B-GGUF']);
-    } else if (choice === 'qwen-moe') {
-      await download(['unsloth/Qwen3.6-35B-A3B-GGUF']);
-    } else {
-      await searchHF([]);
+  while (true) {
+    type Choice = string | "browse" | "skip";
+    const choice = await p.select<Choice>({
+      message: "Grab a starter model now?",
+      initialValue:
+        rows.find((r) => r.compatible)?.entry.id ?? rows[0]?.entry.id ?? "skip",
+      options: [
+        ...rows.map((r) => ({
+          value: r.entry.id,
+          label: r.label,
+          hint: r.hint,
+        })),
+        {
+          value: "browse",
+          label: "Browse HuggingFace…",
+          hint: "search by name",
+        },
+        {
+          value: "skip",
+          label: "Skip — add models later with `locca download`",
+        },
+      ],
+    });
+    exitIfCancelled(choice);
+
+    if (choice === "skip") {
+      p.log.message(
+        "Add a model anytime with `locca download <repo>` or `locca search`.",
+      );
+      return;
     }
-  } catch (e) {
-    p.log.warn(`Model download failed: ${(e as Error).message}`);
-    p.log.message('You can retry later with `locca download` or `locca search`.');
+
+    if (choice === "browse") {
+      try {
+        await searchHF([]);
+      } catch (e) {
+        p.log.warn(`Search failed: ${(e as Error).message}`);
+      }
+      return;
+    }
+
+    const picked = rows.find((r) => r.entry.id === choice);
+    if (!picked) return;
+
+    if (!picked.compatible) {
+      const proceed = await p.confirm({
+        message: `${picked.entry.family.name} ${picked.entry.size.name} likely won't fit (${picked.hint}). Download anyway?`,
+        initialValue: false,
+      });
+      exitIfCancelled(proceed);
+      if (!proceed) continue;
+    }
+
+    try {
+      await downloadCatalogEntry(picked.entry);
+    } catch (e) {
+      p.log.warn(`Model download failed: ${(e as Error).message}`);
+      p.log.message(
+        "You can retry later with `locca download` or `locca search`.",
+      );
+    }
+    return;
   }
 }
 
-async function tryInstallPi(): Promise<void> {
-  const pkg = '@mariozechner/pi-coding-agent';
-  if (have('mise')) {
-    const r = spawnSync('mise', ['use', '-g', `npm:${pkg}`], { stdio: 'inherit' });
-    if (r.status === 0) {
-      p.log.success('Installed pi via mise');
-      return;
-    }
-    p.log.warn('mise install failed, trying npm...');
+interface FirstRunRow {
+  entry: CatalogEntry;
+  label: string;
+  hint: string;
+  compatible: boolean;
+}
+
+/**
+ * For each (family, size) in the catalog, pick the build we want to surface
+ * in the first-run menu and tag it with a compatibility hint. Compatible rows
+ * (full-precision preferred, then quantized fallback) sort first; incompatible
+ * rows stay visible so users learn what their RAM can reach.
+ */
+function pickBuildsForFirstRunMenu(
+  budget: ReturnType<typeof memoryBudget>,
+): FirstRunRow[] {
+  const entries = allEntries();
+  // Group by (family.name, size.name) so we render one row per size.
+  const buckets = new Map<string, CatalogEntry[]>();
+  for (const e of entries) {
+    const key = `${e.family.name}|${e.size.name}`;
+    const list = buckets.get(key);
+    if (list) list.push(e);
+    else buckets.set(key, [e]);
   }
 
-  if (have('npm')) {
-    const r = spawnSync('npm', ['install', '-g', pkg], { stdio: 'inherit' });
+  const rows: FirstRunRow[] = [];
+  for (const variants of buckets.values()) {
+    const compat = variants.filter((v) => isCompatible(v, budget));
+    const pick =
+      defaultBuild(compat) ??
+      // Nothing fits — show the smallest quant so the row carries an honest
+      // "needs N GB" hint rather than disappearing.
+      [...variants].sort((a, b) => a.build.fileSize - b.build.fileSize)[0]!;
+
+    const compatible = compat.length > 0;
+    const hint = compatible
+      ? `${pc.green("fits")} — ${fitHint(pick, budget)}`
+      : (incompatibilitySummary(pick, budget) ?? "too large");
+
+    rows.push({
+      entry: pick,
+      label: `${pick.family.name} ${pick.size.name} ${pick.build.quantization}`,
+      hint,
+      compatible,
+    });
+  }
+
+  // Compatible first; within each group, smaller models first so the
+  // "easy first download" sits at the top.
+  rows.sort((a, b) => {
+    if (a.compatible !== b.compatible) return a.compatible ? -1 : 1;
+    return a.entry.size.parameterCount - b.entry.size.parameterCount;
+  });
+  return rows;
+}
+
+async function tryInstallPi(): Promise<void> {
+  const pkg = "@mariozechner/pi-coding-agent";
+  if (have("mise")) {
+    const r = spawnSync("mise", ["use", "-g", `npm:${pkg}`], {
+      stdio: "inherit",
+    });
     if (r.status === 0) {
-      p.log.success('Installed pi via npm');
+      p.log.success("Installed pi via mise");
       return;
     }
-    p.log.warn('npm install failed (may need sudo, or use a Node version manager).');
+    p.log.warn("mise install failed, trying npm...");
+  }
+
+  if (have("npm")) {
+    const r = spawnSync("npm", ["install", "-g", pkg], { stdio: "inherit" });
+    if (r.status === 0) {
+      p.log.success("Installed pi via npm");
+      return;
+    }
+    p.log.warn(
+      "npm install failed (may need sudo, or use a Node version manager).",
+    );
   } else {
-    p.log.warn('Neither mise nor npm found.');
+    p.log.warn("Neither mise nor npm found.");
   }
 
   p.log.message(
     [
-      'Manual install command:',
+      "Manual install command:",
       `  npm install -g ${pkg}`,
-      '',
-      'On Debian/Ubuntu the system nodejs may be too old — consider mise or NodeSource.',
-    ].join('\n'),
+      "",
+      "On Debian/Ubuntu the system nodejs may be too old — consider mise or NodeSource.",
+    ].join("\n"),
   );
 }

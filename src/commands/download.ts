@@ -2,7 +2,16 @@ import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import * as p from '@clack/prompts';
 import search from '@inquirer/search';
+import { type CatalogEntry, defaultBuild, entriesForRepo } from '../catalog.js';
+import {
+  ctxLabel,
+  highestFittingCtx,
+  incompatibilitySummary,
+  isCompatible,
+  memoryBudget,
+} from '../compat.js';
 import { loadConfig } from '../config.js';
+import { probeHardware } from '../hardware.js';
 import { downloadFile, fileSize, listFiles, parseRepo } from '../hf.js';
 import { exitIfCancelled, pc } from '../ui.js';
 import { formatGB } from '../util.js';
@@ -57,17 +66,28 @@ export async function download(args: string[]): Promise<void> {
 
   const annotated = sized.map((s) => ({ ...s, q: classifyQuant(s.file) }));
   const recommended = pickRecommended(annotated);
-  if (recommended) {
+
+  // If the repo is in our curated catalog, pick the build that fits the
+  // user's machine and steer them to it. Falls through silently for repos we
+  // don't know about.
+  const catalogPick = recommendCatalogBuild(repo);
+  const recommendedFile = catalogPick?.hfFile ?? recommended;
+
+  if (catalogPick) {
+    p.log.info(
+      `Recommended for your machine: ${pc.bold(catalogPick.quantization)} (${catalogPick.reason}).`,
+    );
+  } else if (recommended) {
     p.log.info(
       `Tip: ${pc.bold('Q4_K_M')} is the usual sweet spot (quality vs. size). ${pc.bold('Q8_0')} is near-lossless but ~2× larger; ${pc.bold('Q2_K/Q3_K')} are smallest but noticeably worse.`,
     );
   }
 
   // Put the recommended file first so @inquirer/search highlights it by default.
-  const ordered = recommended
+  const ordered = recommendedFile
     ? [
-        ...annotated.filter((i) => i.file === recommended),
-        ...annotated.filter((i) => i.file !== recommended),
+        ...annotated.filter((i) => i.file === recommendedFile),
+        ...annotated.filter((i) => i.file !== recommendedFile),
       ]
     : annotated;
 
@@ -78,7 +98,7 @@ export async function download(args: string[]): Promise<void> {
       return ordered
         .filter(({ file }) => !q || file.toLowerCase().includes(q))
         .map(({ file, size, q: info }) => {
-          const star = file === recommended ? pc.green('★ ') : '  ';
+          const star = file === recommendedFile ? pc.green('★ ') : '  ';
           const sizeStr = size != null ? `${formatGB(size)} GB` : '?';
           const tag = info ? pc.dim(`— ${info}`) : '';
           return {
@@ -100,7 +120,7 @@ export async function download(args: string[]): Promise<void> {
   console.log(`  To:   ${destDir}/`);
   console.log();
 
-  await downloadWithProgress(repo, selected, join(destDir, basename(selected)));
+  await downloadWithProgress(repo, selected, join(destDir, basenameOnly(selected)));
 
   if (mmprojFile) {
     const wantMmproj = await p.confirm({
@@ -109,12 +129,110 @@ export async function download(args: string[]): Promise<void> {
     });
     exitIfCancelled(wantMmproj);
     if (wantMmproj) {
-      await downloadWithProgress(repo, mmprojFile, join(destDir, basename(mmprojFile)));
+      await downloadWithProgress(repo, mmprojFile, join(destDir, basenameOnly(mmprojFile)));
     }
   }
 
   console.log();
   p.log.success('Download complete');
+}
+
+/**
+ * Look up the best catalog build for the user's machine on this repo.
+ * Returns the picked file plus a one-line "why we chose it" reason.
+ *
+ * Decision order: prefer the highest-precision build that's compatible at
+ * 4k. If none compatible, surface the smallest one with a "tight fit" note
+ * (the user may still want to try). If the repo isn't in the catalog, return
+ * undefined and let the legacy heuristic recommend.
+ */
+function recommendCatalogBuild(
+  repo: string,
+): { hfFile: string; quantization: string; reason: string } | undefined {
+  const entries = entriesForRepo(repo);
+  if (entries.length === 0) return undefined;
+
+  const budget = memoryBudget(probeHardware());
+  const compatible = entries.filter((e) => isCompatible(e, budget));
+
+  if (compatible.length === 0) {
+    // All builds too big — recommend the smallest so the warning is honest.
+    const smallest = [...entries].sort((a, b) => a.build.fileSize - b.build.fileSize)[0]!;
+    const summary = incompatibilitySummary(smallest, budget) ?? 'tight fit';
+    return {
+      hfFile: smallest.build.hfFile,
+      quantization: smallest.build.quantization,
+      reason: `tight on ${budget.description} — ${summary}`,
+    };
+  }
+
+  // Among compatible builds, prefer Unsloth Dynamic 4-bit — it's the
+  // family's recommended starting point per Unsloth's docs. Fall back to
+  // full-precision, then to whichever fits.
+  const pick = defaultBuild(compatible)!;
+  const tier = highestFittingCtx(pick, budget);
+  const tierLabel = tier ? `${ctxLabel(tier)} ctx` : 'fits';
+  return {
+    hfFile: pick.build.hfFile,
+    quantization: pick.build.quantization,
+    reason: `fits in ${budget.description} — ${tierLabel}`,
+  };
+}
+
+/**
+ * Download a curated catalog entry directly. Skips the HF /api/models lookup
+ * that `download(args)` does, since we already know the exact file (and any
+ * shards / mmproj). Used by the setup wizard and the in-menu catalog browser.
+ *
+ * Returns the absolute path to the main GGUF on success.
+ */
+export async function downloadCatalogEntry(entry: CatalogEntry): Promise<string> {
+  const cfg = loadConfig();
+  const repoBase = entry.build.hfRepo.split('/').pop() ?? entry.build.hfRepo;
+  const destDir = join(cfg.modelsDir, repoBase);
+  mkdirSync(destDir, { recursive: true });
+
+  console.log();
+  console.log(pc.magenta(pc.bold('Downloading...')));
+  console.log(`  Model: ${entry.family.name} ${entry.size.name} (${entry.build.quantization})`);
+  console.log(`  Repo:  ${entry.build.hfRepo}`);
+  console.log(`  To:    ${destDir}/`);
+  console.log();
+
+  const mainFile = entry.build.hfFile;
+  const mainPath = join(destDir, basenameOnly(mainFile));
+  await downloadWithProgress(entry.build.hfRepo, mainFile, mainPath);
+
+  for (const shard of entry.build.additionalParts ?? []) {
+    await downloadWithProgress(entry.build.hfRepo, shard, join(destDir, basenameOnly(shard)));
+  }
+
+  if (entry.size.mmprojRepo && entry.size.mmprojFile) {
+    // Vision projector is opt-in — adds ~1 GB of weights only useful for
+    // image input. Mirrors the prompt that `download <repo>` already shows.
+    const wantMmproj = await p.confirm({
+      message: 'Download vision projector too? (adds image-input support)',
+      initialValue: false,
+    });
+    exitIfCancelled(wantMmproj);
+    if (wantMmproj) {
+      const localName = entry.size.mmprojLocalFilename ?? basenameOnly(entry.size.mmprojFile);
+      await downloadWithProgress(
+        entry.size.mmprojRepo,
+        entry.size.mmprojFile,
+        join(destDir, localName),
+      );
+    }
+  }
+
+  console.log();
+  p.log.success('Download complete');
+  return mainPath;
+}
+
+function basenameOnly(p: string): string {
+  const i = p.lastIndexOf('/');
+  return i === -1 ? p : p.slice(i + 1);
 }
 
 async function downloadWithProgress(
@@ -140,11 +258,6 @@ async function downloadWithProgress(
     }
   });
   process.stdout.write('\n');
-}
-
-function basename(p: string): string {
-  const i = p.lastIndexOf('/');
-  return i === -1 ? p : p.slice(i + 1);
 }
 
 /**

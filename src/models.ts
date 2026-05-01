@@ -1,6 +1,9 @@
 import { readdirSync, statSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import search from '@inquirer/search';
+import { findEntryByFilename } from './catalog.js';
+import { highestFittingCtx, memoryBudget } from './compat.js';
+import { probeHardware } from './hardware.js';
 import type { Model } from './types.js';
 import { formatGB } from './util.js';
 
@@ -9,7 +12,10 @@ export function scanModels(modelsDir: string): Model[] {
   walk(modelsDir, (path) => {
     const name = basename(path);
     if (!name.endsWith('.gguf')) return;
-    if (name.startsWith('mmproj')) return;
+    // Match `mmproj` anywhere in the filename — locca's catalog renames
+    // vision projectors to e.g. `Qwen3.5-2B-mmproj-F16.gguf` so a flat
+    // cache dir doesn't collide. A leading-only check would miss those.
+    if (/mmproj/i.test(name)) return;
     // Tokenizer test fixtures from llama.cpp's source tree — they're GGUFs
     // but contain no weights, so they're not chattable.
     if (name.startsWith('ggml-vocab-')) return;
@@ -18,7 +24,7 @@ export function scanModels(modelsDir: string): Model[] {
     let mmproj: string | undefined;
     try {
       const sibling = readdirSync(dir).find(
-        (f) => f.startsWith('mmproj') && f.endsWith('.gguf'),
+        (f) => /mmproj/i.test(f) && f.endsWith('.gguf'),
       );
       if (sibling) mmproj = join(dir, sibling);
     } catch {
@@ -89,13 +95,22 @@ export async function pickModel(
 }
 
 export function findFirstMatch(models: Model[], pattern: string): Model | null {
-  const q = pattern.toLowerCase();
+  // Strip a trailing `.gguf` so callers can pass either the bare model name
+  // ("gemma-4-E2B-it-UD-Q4_K_XL") or the full filename
+  // ("gemma-4-E2B-it-UD-Q4_K_XL.gguf"). `scanModels` stores names without
+  // the extension, so the raw pattern would never match.
+  const q = pattern.toLowerCase().replace(/\.gguf$/, '');
   return models.find((m) => m.name.toLowerCase().includes(q)) ?? null;
 }
 
 // Per-model context override — picked by name match.
 // MoE / hybrid-attention models tolerate big ctx (small per-token KV).
 // Dense models hit VRAM hard above ~32k.
+//
+// Catalog hit (exact filename match) wins: we can compute the largest
+// memory-fitting tier directly from real KV-slope numbers. Otherwise we
+// fall back to a regex-by-name heuristic with the user's vramBudget tier
+// cap.
 //
 // The size-class regexes use word-boundary-ish anchors so e.g. "Qwen3.5-9B"
 // doesn't accidentally match "32B". Order matters — bigger sizes first.
@@ -104,6 +119,15 @@ export function findFirstMatch(models: Model[], pattern: string): Model | null {
 // OOM on the 128k default. It's a tier ceiling, not a precise estimate —
 // see `ctxCapForBudget()`.
 export function ctxForModel(name: string, vramBudgetMB?: number): number {
+  const catalogEntry = findEntryByFilename(`${name}.gguf`) ?? findEntryByFilename(name);
+  if (catalogEntry) {
+    const tier = highestFittingCtx(catalogEntry, memoryBudget(probeHardware()));
+    if (tier) {
+      const cap = ctxCapForBudget(vramBudgetMB);
+      return cap !== undefined && tier > cap ? cap : tier;
+    }
+  }
+
   let ctx: number;
   if (/A3B|MoE|moe/i.test(name)) ctx = 131072;
   else if (/(?<![0-9])(35B|32B|30B)(?![0-9])/.test(name)) ctx = 65536;

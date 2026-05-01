@@ -32,28 +32,6 @@ export async function pi(args: string[], opts: PiOpts = {}): Promise<void> {
     forward = args.slice(1);
   }
 
-  // ── External-server mode (cfg.serverUrl set) ────────────────────────
-  // Skip spawning entirely. Just point pi at the configured URL using
-  // whatever model the server reports.
-  if (cfg.serverUrl) {
-    if (pattern) {
-      p.log.warn(
-        `Ignoring model pattern '${pattern}' — external server is serving its own model.`,
-      );
-    }
-    const status = await serverStatus(cfg);
-    if (!status.running) {
-      p.log.error(
-        `Configured serverUrl (${cfg.serverUrl}) is not responding. Start it or run \`locca setup\` to clear serverUrl.`,
-      );
-      process.exit(1);
-    }
-    const modelId = status.model ?? 'local';
-    console.log(`Using external server: ${status.url}  (model: ${modelId})`);
-    await runPi(cfg, modelId, `${status.url}/v1`, cfg.defaultCtx, forward);
-    return;
-  }
-
   // ── Local mode: we manage llama-server ──────────────────────────────
   requireLlama(cfg);
 

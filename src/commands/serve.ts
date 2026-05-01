@@ -11,13 +11,6 @@ import { api } from './api.js';
 export async function serve(): Promise<void> {
   const cfg = loadConfig();
 
-  if (cfg.serverUrl) {
-    p.log.error(
-      `An external server is configured (serverUrl: ${cfg.serverUrl}). The 'serve' command spawns its own — that would conflict. Run \`locca setup\` to clear serverUrl, or stop using this command.`,
-    );
-    process.exit(1);
-  }
-
   // Check who's on the port before requiring llama-server — we may bail
   // with a more informative error.
   const status = await serverStatus(cfg);

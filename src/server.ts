@@ -20,13 +20,12 @@ export function isAlive(pid: number): boolean {
 
 /**
  * `pid`      — locca spawned this server (we own its lifecycle).
- * `external` — config.serverUrl is set; an externally-managed server.
  * `attached` — no PIDFILE, but something's responding on the local default
  *              port. Could be a llama-server started by hand, by a
  *              supervisor, or by another tool. We can use it but won't
  *              try to stop it.
  */
-export type ServerSource = 'pid' | 'external' | 'attached';
+export type ServerSource = 'pid' | 'attached';
 
 export type ServerStatus =
   | { running: false }
@@ -130,30 +129,11 @@ export async function probeServer(
 
 /**
  * Resolve current server status, in priority order:
- *   1. `serverUrl` configured  → check that URL (source: 'external').
- *   2. PIDFILE exists + alive  → use that (source: 'pid').
- *   3. Local default port responds → use it (source: 'attached').
- *   4. Otherwise nothing.
+ *   1. PIDFILE exists + alive  → use that (source: 'pid').
+ *   2. Local default port responds → use it (source: 'attached').
+ *   3. Otherwise nothing.
  */
 export async function serverStatus(cfg: Config): Promise<ServerStatus> {
-  if (cfg.serverUrl) {
-    const probe = await probeServer(cfg.serverUrl);
-    if (!probe.alive) return { running: false };
-    const u = new URL(cfg.serverUrl);
-    const port = u.port
-      ? parseInt(u.port, 10)
-      : u.protocol === 'https:'
-        ? 443
-        : 80;
-    return {
-      running: true,
-      source: 'external',
-      url: cfg.serverUrl.replace(/\/$/, ''),
-      port,
-      model: probe.model,
-    };
-  }
-
   if (existsSync(PIDFILE)) {
     let pid = NaN;
     try {
@@ -216,18 +196,12 @@ export type StopResult =
   | { stopped: false; reason: string };
 
 /**
- * Stop the server locca started. Refuses to touch externally-managed or
- * attached servers — those need to be stopped via the tool that started them.
+ * Stop the server locca started. Refuses to touch attached servers —
+ * those need to be stopped via the tool that started them.
  */
 export async function stopServer(cfg: Config): Promise<StopResult> {
   const s = await serverStatus(cfg);
   if (!s.running) return { stopped: false, reason: 'no server running' };
-  if (s.source === 'external') {
-    return {
-      stopped: false,
-      reason: `external server (configured serverUrl: ${s.url}) — stop it where it was started`,
-    };
-  }
   if (s.source === 'attached') {
     return {
       stopped: false,

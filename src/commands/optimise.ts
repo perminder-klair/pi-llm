@@ -57,23 +57,6 @@ interface ServerInfo {
 }
 
 async function ensureServer(cfg: Config, report: DoctorReport): Promise<ServerInfo> {
-  // External — already validated by doctor; use as-is.
-  if (cfg.serverUrl && report.status.running && report.status.source === 'external') {
-    const modelId = report.status.model ?? 'local';
-    return {
-      modelId,
-      baseUrl: `${report.status.url}/v1`,
-      ctx: report.liveCtx ?? cfg.defaultCtx,
-      spawnedHere: false,
-    };
-  }
-  if (cfg.serverUrl && !report.status.running) {
-    throw new Error(
-      `Configured serverUrl (${cfg.serverUrl}) is not responding. Start it, or clear serverUrl via \`locca setup\`.`,
-    );
-  }
-
-  // Local mode.
   requireLlama(cfg);
 
   if (report.status.running) {

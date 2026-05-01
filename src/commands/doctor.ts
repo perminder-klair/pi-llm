@@ -80,9 +80,7 @@ function renderServer(r: DoctorReport): void {
   const sourceLabel =
     r.status.source === 'pid'
       ? `locca-managed (pid ${r.status.pid})`
-      : r.status.source === 'external'
-        ? 'external (configured serverUrl)'
-        : 'attached (started outside locca)';
+      : 'attached (started outside locca)';
   console.log(`    ${pc.green('● running')}  ${pc.dim(sourceLabel)}`);
   console.log(`    Model        ${r.status.model ?? pc.dim('(unknown)')}`);
   console.log(`    URL          ${r.status.url}/v1`);

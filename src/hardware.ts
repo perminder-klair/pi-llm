@@ -20,12 +20,29 @@ export interface HardwareInfo {
 }
 
 export function probeHardware(): HardwareInfo {
-  return {
+  // RAM doesn't change at runtime — cache to avoid re-running the slow GPU
+  // probes (system_profiler is 1–2s on macOS) every time the menu redraws.
+  // LOCCA_SIMULATE_MEM_GB lets us exercise the low-RAM compat path on a
+  // beefy machine; mirrors LlamaBarn's BARN_SIMULATE_MEM_GB.
+  if (cached) return cached;
+  const ramTotalMB = simulatedRamMB() ?? Math.round(totalmem() / 1024 / 1024);
+  cached = {
     cpus: cpus().length,
-    ramTotalMB: Math.round(totalmem() / 1024 / 1024),
+    ramTotalMB,
     ramFreeMB: Math.round(freemem() / 1024 / 1024),
     gpus: probeGpus(),
   };
+  return cached;
+}
+
+let cached: HardwareInfo | undefined;
+
+function simulatedRamMB(): number | undefined {
+  const raw = process.env.LOCCA_SIMULATE_MEM_GB;
+  if (!raw) return undefined;
+  const gb = Number(raw);
+  if (!Number.isFinite(gb) || gb <= 0) return undefined;
+  return Math.round(gb * 1024);
 }
 
 // Order matters: vendor-specific probes first (they report VRAM accurately);

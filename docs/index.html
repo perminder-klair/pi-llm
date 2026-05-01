@@ -746,13 +746,43 @@
             </p>
           </div>
           <div class="feature">
-            <div class="glyph" aria-hidden="true">π</div>
-            <h3>The fast, light stack</h3>
+            <div class="glyph" aria-hidden="true">↯</div>
+            <h3>Download &amp; manage</h3>
             <p>
-              <code translate="no">llama.cpp</code> is small and fast.
-              <a href="https://pi.dev" target="_blank" rel="noopener noreferrer" style="color:var(--teal)">pi</a>
-              is the rare coding agent that doesn't blow through context,
-              which matters a lot when your model only has 32k to spare.
+              <code translate="no">locca search qwen</code> fuzzy-searches HuggingFace,
+              <code translate="no">locca download</code> pulls a GGUF straight into your
+              models dir, <code translate="no">locca delete</code> reclaims the disk.
+              Vision adapters (<code translate="no">mmproj*.gguf</code>) auto-attach to their parent.
+            </p>
+          </div>
+          <div class="feature">
+            <div class="glyph" aria-hidden="true">✚</div>
+            <h3>Doctor &amp; optimise</h3>
+            <p>
+              <code translate="no">locca doctor</code> sweeps hardware, server state,
+              and the last 64 KiB of log for known issues — outdated chat
+              templates, OOMs, ctx truncation. <code translate="no">locca optimise</code>
+              hands the same data to pi and asks for concrete tweaks.
+            </p>
+          </div>
+          <div class="feature">
+            <div class="glyph" aria-hidden="true">⇄</div>
+            <h3>OpenAI-compatible</h3>
+            <p>
+              Point Cursor, Claude Code, or any OpenAI client at the local
+              server. <code translate="no">locca api</code> prints the base URL plus every
+              reachable LAN and Tailscale address — probed live, so a phone
+              on the same network just works.
+            </p>
+          </div>
+          <div class="feature">
+            <div class="glyph" aria-hidden="true">π</div>
+            <h3>Plays nice</h3>
+            <p>
+              Already running <code translate="no">llama-server</code> by hand or via a
+              supervisor? locca detects it on <code translate="no">/health</code>, marks it
+              <span style="color:var(--teal)">attached</span>, and uses it instead of spawning a duplicate.
+              <code translate="no">stop</code> and <code translate="no">logs</code> defer to whatever started it.
             </p>
           </div>
         </div>

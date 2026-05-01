@@ -159,7 +159,7 @@ async function renderServerLine(): Promise<void> {
 function renderSetupAlerts(): void {
   const cfg = loadConfig();
   const missing: string[] = [];
-  if (!have('llama-server')) missing.push('llama.cpp not installed');
+  if (!have('llama-server') && !have(cfg.llamaServer)) missing.push('llama.cpp not installed');
   if (!have('pi')) missing.push('pi (coding agent) not installed');
   let modelsEmpty = false;
   try {

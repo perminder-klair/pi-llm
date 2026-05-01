@@ -184,12 +184,32 @@ export async function runSetup(): Promise<void> {
   if (have('pi')) {
     p.log.success('pi (coding agent) found');
   } else {
-    const installPi = await p.confirm({
-      message: "Install 'pi' coding agent now?",
-      initialValue: true,
+    p.log.warn("'pi' (coding agent) NOT found in PATH");
+    const choice = await p.select<'auto' | 'manual' | 'skip'>({
+      message: 'How would you like to install it?',
+      initialValue: 'auto',
+      options: [
+        {
+          value: 'auto',
+          label: 'Let locca install pi via npm/mise',
+          hint: 'recommended — runs the install for you',
+        },
+        {
+          value: 'manual',
+          label: "I'll install it myself",
+          hint: 'show the install command, continue setup',
+        },
+        { value: 'skip', label: 'Skip for now' },
+      ],
     });
-    exitIfCancelled(installPi);
-    if (installPi) await tryInstallPi();
+    exitIfCancelled(choice);
+
+    if (choice === 'auto') {
+      await tryInstallPi();
+    } else if (choice === 'manual') {
+      p.log.message(renderPiInstallHint());
+      p.log.message(pc.dim('Setup will continue. Re-run `locca setup` later if you change your mind.'));
+    }
   }
 
   if (!llamaPresent) {
@@ -354,10 +374,22 @@ function pickBuildsForFirstRunMenu(budget: ReturnType<typeof memoryBudget>): Fir
   return rows;
 }
 
+const PI_PKG = '@mariozechner/pi-coding-agent';
+
+function renderPiInstallHint(): string {
+  return [
+    'Install pi with:',
+    `  ${pc.cyan(`npm install -g ${PI_PKG}`)}`,
+    'or via mise:',
+    `  ${pc.cyan(`mise use -g npm:${PI_PKG}`)}`,
+    '',
+    pc.dim('On Debian/Ubuntu the system nodejs may be too old — consider mise or NodeSource.'),
+  ].join('\n');
+}
+
 async function tryInstallPi(): Promise<void> {
-  const pkg = '@mariozechner/pi-coding-agent';
   if (have('mise')) {
-    const r = spawnSync('mise', ['use', '-g', `npm:${pkg}`], {
+    const r = spawnSync('mise', ['use', '-g', `npm:${PI_PKG}`], {
       stdio: 'inherit',
     });
     if (r.status === 0) {
@@ -368,7 +400,7 @@ async function tryInstallPi(): Promise<void> {
   }
 
   if (have('npm')) {
-    const r = spawnSync('npm', ['install', '-g', pkg], { stdio: 'inherit' });
+    const r = spawnSync('npm', ['install', '-g', PI_PKG], { stdio: 'inherit' });
     if (r.status === 0) {
       p.log.success('Installed pi via npm');
       return;
@@ -378,12 +410,5 @@ async function tryInstallPi(): Promise<void> {
     p.log.warn('Neither mise nor npm found.');
   }
 
-  p.log.message(
-    [
-      'Manual install command:',
-      `  npm install -g ${pkg}`,
-      '',
-      'On Debian/Ubuntu the system nodejs may be too old — consider mise or NodeSource.',
-    ].join('\n'),
-  );
+  p.log.message(renderPiInstallHint());
 }

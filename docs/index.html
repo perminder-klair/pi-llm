@@ -128,6 +128,9 @@
     }
     .nav-links a:hover { color: var(--fg); }
     .nav-links .gh {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       color: var(--fg);
       border: 1px solid var(--line-strong);
       padding: 6px 12px;
@@ -135,6 +138,7 @@
       transition: border-color 0.15s ease, background 0.15s ease;
     }
     .nav-links .gh:hover { border-color: var(--magenta); background: var(--magenta-soft); }
+    .nav-links .gh svg { display: block; }
     @media (max-width: 640px) {
       .nav-links a:not(.gh) { display: none; }
     }
@@ -490,113 +494,18 @@
       border-radius: 4px;
     }
 
-    /* ---------- showcase (bench + ctx) ---------- */
-    .showcase {
-      display: grid;
-      grid-template-columns: 1.2fr 1fr;
-      gap: 28px;
-      align-items: stretch;
-    }
-    @media (max-width: 900px) { .showcase { grid-template-columns: 1fr; } }
-
-    .panel {
-      background: var(--bg-soft);
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      overflow: hidden;
-    }
-    .panel-head {
-      padding: 14px 18px;
-      border-bottom: 1px solid var(--line);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-family: var(--mono);
-      font-size: 12px;
-      color: var(--fg-faint);
-    }
-    .panel-head h3 {
-      margin: 0;
-      font-size: 12px;
-      font-weight: 400;
-      color: var(--fg-faint);
-      letter-spacing: 0;
-    }
-    .panel-head .tag {
-      color: var(--teal);
-      background: var(--teal-soft);
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 11px;
-    }
-    .panel-body { padding: 22px 22px 24px; }
-
-    .bench-line {
-      display: grid;
-      grid-template-columns: 130px 110px 130px 1fr;
-      gap: 10px;
-      font-family: var(--mono);
-      font-size: 13.5px;
-      padding: 6px 0;
-      align-items: baseline;
-      font-variant-numeric: tabular-nums;
-    }
-    .bench-line .label { color: var(--fg-mute); }
-    .bench-line .num { color: var(--magenta); font-weight: 600; text-align: right; }
-    .bench-line .word { color: var(--teal); }
-    .bench-line .desc { color: var(--fg-faint); font-size: 12px; }
-    @media (max-width: 540px) {
-      .bench-line { grid-template-columns: 1fr 1fr; }
-      .bench-line .desc { grid-column: 1 / -1; }
-    }
-    .bench-translate {
-      margin-top: 18px;
-      padding-top: 16px;
-      border-top: 1px dashed var(--line-strong);
-      font-family: var(--mono);
-      font-size: 13px;
-      color: var(--fg-mute);
-      font-variant-numeric: tabular-nums;
-    }
-    .bench-translate ul { margin: 8px 0 0; padding-left: 18px; }
-    .bench-translate li { margin-bottom: 2px; }
-    .bench-translate b { color: var(--fg); font-weight: 600; }
-
-    .ctx-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-family: var(--mono);
-      font-size: 13.5px;
-      font-variant-numeric: tabular-nums;
-    }
-    .ctx-table th, .ctx-table td {
-      padding: 11px 4px;
-      text-align: left;
-      border-bottom: 1px solid var(--line);
-    }
-    .ctx-table th {
-      font-weight: 500;
-      color: var(--fg-faint);
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-    .ctx-table td:last-child { text-align: right; color: var(--magenta); }
-    .ctx-table tr:last-child td { border-bottom: 0; }
-
     /* ---------- commands ---------- */
     .cmd-grid {
       list-style: none;
       margin: 0;
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px 28px;
+      grid-template-columns: 1fr;
+      gap: 0;
       background: var(--bg-soft);
       border: 1px solid var(--line);
       border-radius: var(--radius);
       padding: 22px 26px;
     }
-    @media (max-width: 720px) { .cmd-grid { grid-template-columns: 1fr; } }
     .cmd-row {
       display: flex;
       align-items: baseline;
@@ -605,7 +514,7 @@
       border-bottom: 1px dashed var(--line);
       min-width: 0;
     }
-    .cmd-row:last-child, .cmd-grid > .cmd-row:nth-last-child(-n+2) { border-bottom: 0; }
+    .cmd-row:last-child { border-bottom: 0; }
     .cmd-row code {
       font-family: var(--mono);
       font-size: 13.5px;
@@ -734,10 +643,12 @@
     <div class="wrap nav-inner">
       <a href="#main" class="brand" aria-label="locca home" translate="no">locca<span class="dot">.</span></a>
       <nav class="nav-links" aria-label="primary">
-        <a href="#features">Features</a>
-        <a href="#commands">Commands</a>
         <a href="#install">Install</a>
-        <a class="gh" href="#" id="openVideo" aria-haspopup="dialog">Watch video</a>
+        <a href="#commands">Commands</a>
+        <a class="gh" href="https://github.com/perminder-klair/locca" target="_blank" rel="noopener noreferrer" aria-label="View locca on GitHub">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true" width="14" height="14"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2 .37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+          GitHub
+        </a>
       </nav>
     </div>
   </header>
@@ -747,7 +658,7 @@
     <section class="hero" aria-labelledby="hero-title">
       <div class="wrap hero-grid">
         <div>
-          <span class="pill"><span class="pulse" aria-hidden="true"></span> Local-first · MIT · v0.2.0</span>
+          <span class="pill"><span class="pulse" aria-hidden="true"></span> Local-first</span>
           <h1 id="hero-title" class="headline">
             Run agent locally.<br />Download, <em>switch</em>, repeat.
           </h1>
@@ -767,9 +678,9 @@
               <span class="cmd" id="installCmd" translate="no">npm install -g @zeiq/locca</span>
               <button id="copyInstall" type="button" aria-label="copy install command">Copy</button>
             </div>
-            <a class="btn-ghost" href="https://github.com/perminder-klair/locca" target="_blank" rel="noopener noreferrer">
-              <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M8 0C3.58 0 0 3.58 0 8a8 8 0 0 0 5.47 7.59c.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2 .37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
-              View on GitHub
+            <a class="btn-ghost" href="#" id="openVideo" aria-haspopup="dialog">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5.14v14l11-7-11-7z"/></svg>
+              Watch video
             </a>
           </div>
         </div>
@@ -825,121 +736,26 @@
           </div>
           <div class="feature">
             <div class="glyph" aria-hidden="true">⤬</div>
-            <h3>Auto context per model</h3>
+            <h3>Catalog-aware picker</h3>
             <p>
-              <code translate="no">ctxForModel()</code> reads the model name and picks a sane
-              ctx — 128k for MoE &amp; 7–9B, scaled down for dense 12–35B. One
-              regex away from tuning for your VRAM.
+              The first-run wizard and <code translate="no">locca switch</code> show every
+              curated model with a <span style="color:var(--teal)">fits — 5.6 GB dl,
+              14.3 GB RAM, 256k ctx</span> hint based on your detected hardware.
+              No more 30 GB downloads that won't run.
             </p>
           </div>
           <div class="feature">
-            <div class="glyph" aria-hidden="true">⌘</div>
-            <h3>Composes, doesn’t capture</h3>
+            <div class="glyph" aria-hidden="true">π</div>
+            <h3>The fast, light stack</h3>
             <p>
-              Detects <span style="color:var(--teal)">attached</span> and
-              <span style="color:var(--teal)">external</span> llama-servers
-              instead of fighting them for VRAM. Bring your own supervisor —
-              locca will use it.
+              <code translate="no">llama.cpp</code> is the leanest local inference runtime;
+              <a href="https://pi.dev" target="_blank" rel="noopener noreferrer" style="color:var(--teal)">pi</a>
+              is the smallest agent that actually does coding tools. Both stay
+              out of your VRAM so the <em style="font-style:normal;color:var(--fg)">model</em>
+              gets the budget.
             </p>
           </div>
         </div>
-      </div>
-    </section>
-
-    <!-- ============ SHOWCASE ============ -->
-    <section aria-labelledby="show-title">
-      <div class="wrap">
-        <p class="eyebrow">The numbers</p>
-        <h2 id="show-title">Speed you can read at a glance.</h2>
-        <p class="section-lede">
-          <code translate="no" style="font-family:var(--mono);color:var(--magenta)">locca bench</code>
-          wraps <code translate="no" style="font-family:var(--mono)">llama-bench</code> and
-          answers the only question that matters: how long until you see
-          a reply.
-        </p>
-
-        <div class="showcase">
-          <div class="panel">
-            <div class="panel-head">
-              <h3 translate="no">locca bench · qwen2.5-coder-7b · q4_k_m</h3>
-              <span class="tag" style="color:var(--fg-faint);background:transparent;border:1px solid var(--line-strong)">example · Radeon 890M iGPU</span>
-            </div>
-            <div class="panel-body">
-              <div class="bench-line">
-                <span class="label">Generation</span>
-                <span class="num">18.3 tok/s</span>
-                <span class="word">≈ 14 wps</span>
-                <span class="desc">drives perceived speed</span>
-              </div>
-              <div class="bench-line">
-                <span class="label">Prompt eval</span>
-                <span class="num">231.4 tok/s</span>
-                <span class="word">≈ 178 wps</span>
-                <span class="desc">parallel, batched</span>
-              </div>
-              <div class="bench-translate">
-                Translates to:
-                <ul>
-                  <li>200-token reply <b>10.9&nbsp;s</b></li>
-                  <li>2 000-token reply <b>1m&nbsp;49s</b></li>
-                  <li>1 000-token prompt eval <b>4.3&nbsp;s</b> &nbsp;<span style="color:var(--fg-faint)">(time-to-first-token)</span></li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div class="panel">
-            <div class="panel-head">
-              <h3>Auto context per model class</h3>
-              <span class="tag" translate="no">ctxForModel()</span>
-            </div>
-            <div class="panel-body">
-              <table class="ctx-table" aria-label="auto-context table">
-                <thead>
-                  <tr><th>model class</th><th>ctx</th></tr>
-                </thead>
-                <tbody>
-                  <tr><td>MoE / *A3B*</td><td>131 072</td></tr>
-                  <tr><td>3B – 9B dense</td><td>131 072</td></tr>
-                  <tr><td>12B – 14B dense</td><td>65 536</td></tr>
-                  <tr><td>22B – 27B dense</td><td>32 768</td></tr>
-                  <tr><td>30B – 35B dense</td><td>65 536</td></tr>
-                  <tr><td>other / unknown</td><td>32 768</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ COMMANDS ============ -->
-    <section id="commands" aria-labelledby="cmd-title">
-      <div class="wrap">
-        <p class="eyebrow">Surface</p>
-        <h2 id="cmd-title">A small set of commands.</h2>
-        <p class="section-lede">
-          Run <code translate="no" style="font-family:var(--mono);color:var(--magenta)">locca</code>
-          with no args for the menu, or jump straight to what you need.
-        </p>
-
-        <ul class="cmd-grid">
-          <li class="cmd-row"><code translate="no">locca pi</code><span>Launch the pi coding agent against your local server.</span></li>
-          <li class="cmd-row"><code translate="no">locca serve</code><span>Start <code translate="no" style="font-family:var(--mono)">llama-server</code> with a picked model, detached.</span></li>
-          <li class="cmd-row"><code translate="no">locca switch</code><span>Stop current server, start a new model with pi.</span></li>
-          <li class="cmd-row"><code translate="no">locca bench</code><span>Run llama-bench with a friendlier summary.</span></li>
-          <li class="cmd-row"><code translate="no">locca status</code><span>Server, llama.cpp, and models summary.</span></li>
-          <li class="cmd-row"><code translate="no">locca doctor</code><span>Health check — hardware, server, log warnings, config sanity.</span></li>
-          <li class="cmd-row"><code translate="no">locca optimise</code><span>Have pi review the deployment and rank concrete tweaks.</span></li>
-          <li class="cmd-row"><code translate="no">locca api</code><span>Print OpenAI-compatible connection info + LAN URLs.</span></li>
-          <li class="cmd-row"><code translate="no">locca logs</code><span>Tail the server log (locca-spawned servers only).</span></li>
-          <li class="cmd-row"><code translate="no">locca download</code><span>Pull a GGUF from HuggingFace into your models dir.</span></li>
-          <li class="cmd-row"><code translate="no">locca search</code><span>Fuzzy-search HuggingFace for GGUF models.</span></li>
-          <li class="cmd-row"><code translate="no">locca delete</code><span>Remove a model directory you no longer need.</span></li>
-          <li class="cmd-row"><code translate="no">locca stop</code><span>Stop the running server.</span></li>
-          <li class="cmd-row"><code translate="no">locca config</code><span>View / edit settings — get, set, reset, list, path.</span></li>
-          <li class="cmd-row"><code translate="no">locca setup</code><span>Re-run the setup wizard.</span></li>
-        </ul>
       </div>
     </section>
 
@@ -981,6 +797,35 @@
             <div class="ln"><span class="p">$</span> npm link</div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ============ COMMANDS ============ -->
+    <section id="commands" aria-labelledby="cmd-title">
+      <div class="wrap">
+        <p class="eyebrow">Surface</p>
+        <h2 id="cmd-title">A small set of commands.</h2>
+        <p class="section-lede">
+          Run <code translate="no" style="font-family:var(--mono);color:var(--magenta)">locca</code>
+          with no args for the menu, or jump straight to what you need.
+        </p>
+
+        <ul class="cmd-grid">
+          <li class="cmd-row"><code translate="no">locca pi</code><span>Launch the pi coding agent against your local server.</span></li>
+          <li class="cmd-row"><code translate="no">locca serve</code><span>Start <code translate="no" style="font-family:var(--mono)">llama-server</code> with a picked model, detached.</span></li>
+          <li class="cmd-row"><code translate="no">locca switch</code><span>Catalog-aware picker — installed models + curated catalog with fit hints.</span></li>
+          <li class="cmd-row"><code translate="no">locca bench</code><span>Run llama-bench with a friendlier summary.</span></li>
+          <li class="cmd-row"><code translate="no">locca doctor</code><span>Health check — hardware, server, log warnings, config sanity.</span></li>
+          <li class="cmd-row"><code translate="no">locca optimise</code><span>Have pi review the deployment and rank concrete tweaks.</span></li>
+          <li class="cmd-row"><code translate="no">locca api</code><span>Print OpenAI-compatible connection info + LAN URLs.</span></li>
+          <li class="cmd-row"><code translate="no">locca logs</code><span>Tail the server log (locca-spawned servers only).</span></li>
+          <li class="cmd-row"><code translate="no">locca download</code><span>Pull a GGUF from HuggingFace into your models dir.</span></li>
+          <li class="cmd-row"><code translate="no">locca search</code><span>Fuzzy-search HuggingFace for GGUF models.</span></li>
+          <li class="cmd-row"><code translate="no">locca delete</code><span>Remove a model directory you no longer need.</span></li>
+          <li class="cmd-row"><code translate="no">locca stop</code><span>Stop the running server.</span></li>
+          <li class="cmd-row"><code translate="no">locca config</code><span>View / edit settings — get, set, reset, list, path.</span></li>
+          <li class="cmd-row"><code translate="no">locca setup</code><span>Re-run the setup wizard.</span></li>
+        </ul>
       </div>
     </section>
 

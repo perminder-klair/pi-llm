@@ -1,8 +1,8 @@
-import { spawn, spawnSync } from 'node:child_process';
-import { freemem, loadavg, totalmem } from 'node:os';
+import { spawn } from 'node:child_process';
 import * as p from '@clack/prompts';
 import { CONFIG_FILE, loadConfig } from '../config.js';
 import { pickModel, scanModels } from '../models.js';
+import { buildStatsLine } from '../sys-stats.js';
 import { pc } from '../ui.js';
 import { have } from '../util.js';
 
@@ -47,7 +47,7 @@ export async function bench(): Promise<void> {
 
   const startedAt = Date.now();
   const tick = setInterval(() => {
-    spinner.message(buildStatsLine(startedAt));
+    spinner.message(buildStatsLine('Running llama-bench…', startedAt));
   }, 1000);
 
   let stdout = '';

@@ -4,10 +4,11 @@ import * as p from '@clack/prompts';
 import { loadConfig } from '../config.js';
 import { requireLlama, requirePi } from '../deps.js';
 import { type DoctorReport, runDoctor, summariseForPrompt } from '../doctor.js';
-import { ctxForModel, scanModels } from '../models.js';
+import { ctxForModel, pickModel, scanModels } from '../models.js';
 import { PI_PROVIDER_KEY, ensurePiModelsJson } from '../pi-config.js';
 import { refuseIfPortTaken } from '../preflight.js';
-import { launchServer, serverStatus, waitReady } from '../server.js';
+import { launchServer, serverStatus, stopServer, waitReady } from '../server.js';
+import { buildStatsLine } from '../sys-stats.js';
 import type { Config } from '../types.js';
 import { header, pc } from '../ui.js';
 
@@ -17,14 +18,10 @@ export async function optimise(): Promise<void> {
 
   header('locca  ·  optimise');
 
-  console.log(
-    `  ${pc.yellow(pc.bold('Experimental'))}  ${pc.dim('— advice quality is bounded by your local model.')}`,
+  p.note(
+    `${pc.yellow('Advice quality is bounded by your local model.')}\nA 2-4B model will hallucinate flags. Run on a ≥7B instruct model for\nusable output. Verify any suggested change against llama.cpp docs\nbefore applying.`,
+    'Experimental',
   );
-  console.log(
-    `  ${pc.dim('A 2-4B model will hallucinate flags. Run on a ≥7B instruct model for usable output.')}`,
-  );
-  console.log(`  ${pc.dim('Verify any suggested change against llama.cpp docs before applying.')}`);
-  console.log();
 
   const spinner = p.spinner();
   spinner.start('Gathering deployment state...');
@@ -63,30 +60,48 @@ interface ServerInfo {
 async function ensureServer(cfg: Config, report: DoctorReport): Promise<ServerInfo> {
   requireLlama(cfg);
 
-  if (report.status.running) {
-    // Reuse whatever's running (pid or attached). pi will talk to the same
-    // server locca knows about; no model swap.
-    const modelId = report.status.model ?? 'local';
-    return {
-      modelId,
-      baseUrl: `${report.status.url}/v1`,
-      ctx: report.liveCtx ?? cfg.defaultCtx,
-      spawnedHere: false,
-    };
-  }
-
-  // Nothing running — start the first available model.
+  // Always let the user pick — a 2-4B model can't sensibly review a 70B
+  // deployment, so picking is meaningful even if a server is already up.
+  // Smaller (≤9 GiB) models sit at the top so the default highlight stays
+  // sensible.
   const models = scanModels(cfg.modelsDir);
   if (models.length === 0) {
     throw new Error(
       `No models in ${cfg.modelsDir}. Run \`locca download\` or \`locca search\` to fetch one.`,
     );
   }
-  // Prefer the first model under ~9 GiB so we don't accidentally cold-start a
-  // huge quant just to ask it about itself. Falls back to plain first if all
-  // models are large.
-  const small = models.find((m) => m.sizeGB <= 9);
-  const model = small ?? models[0]!;
+  const ordered = [
+    ...models.filter((m) => m.sizeGB <= 9),
+    ...models.filter((m) => m.sizeGB > 9),
+  ];
+  const model = await pickModel(ordered, 'Pick a model to run optimise against');
+  if (!model) throw new Error('No model selected.');
+
+  // If something's already serving the same model, reuse it.
+  if (report.status.running && report.status.model === basename(model.path)) {
+    return {
+      modelId: report.status.model,
+      baseUrl: `${report.status.url}/v1`,
+      ctx: report.liveCtx ?? cfg.defaultCtx,
+      spawnedHere: false,
+    };
+  }
+
+  // Different model running. If it's locca-managed, swap. If it's attached
+  // (started by hand), we can't switch — bail with a clear message.
+  if (report.status.running) {
+    if (report.status.source === 'attached') {
+      throw new Error(
+        `Attached server on :${cfg.defaultPort} is serving '${report.status.model ?? '?'}', not '${model.name}'. Stop it manually before running optimise on a different model.`,
+      );
+    }
+    console.log(
+      `  Switching server: ${pc.dim(report.status.model ?? '?')} -> ${pc.cyan(model.name)}`,
+    );
+    await stopServer(cfg);
+    await new Promise((r) => setTimeout(r, 500));
+  }
+
   const port = cfg.defaultPort;
   const ctx = ctxForModel(model.name, cfg.vramBudgetMB);
 
@@ -142,16 +157,29 @@ async function runPiPrint(info: ServerInfo, prompt: string): Promise<void> {
   // pi actually starts emitting tokens. stderr stays inherited — pi prints
   // very little there in --print mode.
   const child = spawn('pi', args, { stdio: ['pipe', 'pipe', 'inherit'] });
+  // Pi can crash mid-stream (e.g. llama-server connection drops) — its
+  // own output-guard then EPIPEs and dumps a stack trace. Swallow stream
+  // errors here so they surface as a clean "Pi exited with code N" instead
+  // of a node stack landing in the middle of a later command's output.
+  child.stdin.on('error', () => {});
+  child.stdout.on('error', () => {});
+  child.on('error', () => {});
   child.stdin.write(prompt);
   child.stdin.end();
 
   const spinner = p.spinner();
   let firstChunk = true;
   let receivedAnyOutput = false;
-  spinner.start('Pi is thinking (prompt eval can take 10–60s on local models)...');
+  const startedAt = Date.now();
+  const PROMPT = 'Pi is thinking (prompt eval can take 10–60s on local models)…';
+  spinner.start(PROMPT);
+  const tick = setInterval(() => {
+    if (firstChunk) spinner.message(buildStatsLine(PROMPT, startedAt));
+  }, 1000);
 
   child.stdout.on('data', (chunk: Buffer) => {
     if (firstChunk) {
+      clearInterval(tick);
       spinner.stop('Pi:');
       firstChunk = false;
     }
@@ -161,14 +189,25 @@ async function runPiPrint(info: ServerInfo, prompt: string): Promise<void> {
 
   await new Promise<void>((resolve) => {
     child.on('exit', (code) => {
+      clearInterval(tick);
+      const failed = (code ?? 0) !== 0;
       if (firstChunk) {
-        spinner.stop(receivedAnyOutput ? 'Pi finished.' : 'Pi exited without output.');
+        spinner.stop(
+          failed
+            ? `Pi exited with code ${code} (no output).`
+            : receivedAnyOutput
+              ? 'Pi finished.'
+              : 'Pi exited without output.',
+        );
       } else {
         // Ensure trailing newline so the menu re-render isn't glued to pi's
         // last token.
         process.stdout.write('\n');
+        if (failed) p.log.warn(`Pi exited with code ${code} mid-output.`);
       }
-      process.exitCode = code ?? 0;
+      // Don't propagate pi's exit code to the locca process — optimise is
+      // one menu action among many; a pi crash here shouldn't make `locca`
+      // itself exit non-zero when the user later quits the menu.
       resolve();
     });
   });

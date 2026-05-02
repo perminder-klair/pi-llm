@@ -136,24 +136,21 @@ async function renderServerLine(): Promise<boolean> {
   const cfg = loadConfig();
   const s = await serverStatus(cfg);
   if (!s.running) {
-    console.log(pc.dim('  ○ No server running'));
+    p.note(pc.dim('○ No server running'), 'Server');
     return false;
   }
-  const sourceLabel = s.source === 'pid' ? `running  (pid ${s.pid})` : 'attached';
-  const head = `${sourceLabel}  llama-server on :${s.port}`;
-  console.log(`  ${pc.green('●')} ${pc.bold(head)}`);
-
-  if (s.model) {
-    console.log(`            ${pc.dim(s.model)}`);
-  }
+  const sourceLabel = s.source === 'pid' ? `running (pid ${s.pid})` : 'attached';
+  const lines: string[] = [];
+  lines.push(`${pc.green('●')} ${pc.bold(sourceLabel)} on :${s.port}`);
+  if (s.model) lines.push(pc.dim(s.model));
 
   const props = await probeServerProps(s.url);
   const subBits: string[] = [];
   if (props.ctx) subBits.push(`ctx ${props.ctx.toLocaleString('en-US')}`);
   if (props.slots) subBits.push(`${props.slots} slot${props.slots === 1 ? '' : 's'}`);
-  if (subBits.length) {
-    console.log(`            ${pc.dim(subBits.join(' · '))}`);
-  }
+  if (subBits.length) lines.push(pc.dim(subBits.join(' · ')));
+
+  p.note(lines.join('\n'), 'llama-server');
   return true;
 }
 

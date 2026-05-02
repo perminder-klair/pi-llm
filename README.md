@@ -68,31 +68,6 @@ locca help                     # full command listing
 
 `locca pi qwen` fuzzy-matches the first `*qwen*.gguf` in your models dir.
 
-## `locca doctor` and `locca optimise`
-
-`locca doctor` runs a read-only sweep:
-
-- **Hardware** — CPU count, RAM, GPUs (probed via `nvidia-smi`,
-  `rocm-smi`, `vulkaninfo`, or `system_profiler` on macOS) with VRAM
-  totals where vendor tools expose them.
-- **llama.cpp** — resolved binary path and `--version`.
-- **Server** — running state (none / `pid` / `attached`), live `n_ctx`
-  and `n_ctx_train` from `/props`.
-- **Models** — count and total size in `modelsDir`.
-- **pi** — installed? `~/.pi/agent/models.json` present? `locca` provider
-  registered?
-- **Server log** — scans the last 64 KiB for known patterns: outdated
-  chat templates, jinja render failures, OOMs, context truncation,
-  `cache_reuse` fall-backs, speculative-decoding warnings.
-- **Findings** — info / warning / error rows with concrete suggestions
-  (e.g. *"defaultThreads (16) > cpu count (12) — drop to 10"*).
-
-`locca optimise` (alias `optimize`) bundles the same data into a markdown
-prompt and pipes it to `pi` running against your local model. It spins
-up a small model from `modelsDir` if nothing's serving, then asks pi to
-rank 3–5 concrete tweaks. Useful when `doctor`'s heuristics aren't
-enough and you want a model to look at the whole picture.
-
 ## `locca api`
 
 When a server is running, `locca api` prints the OpenAI-compatible

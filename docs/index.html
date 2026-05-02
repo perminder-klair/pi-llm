@@ -724,6 +724,32 @@
     footer a:hover { color: var(--fg); }
     .footer-links { display: flex; gap: 22px; flex-wrap: wrap; }
 
+    /* ---------- mobile polish ---------- */
+    @media (max-width: 640px) {
+      /* hero terminal: shrink so the ASCII logo and longest menu row fit
+         without horizontal scroll on a 375–390px viewport */
+      .term { font-size: 11px; line-height: 1.55; }
+      .term-body { padding: 14px 14px 18px; min-height: 260px; }
+      .term-body .term-hint { font-size: 10.5px; margin-top: 8px; }
+
+      /* cmd-grid rows: stack code above description so neither column
+         gets squished when the code label is long (e.g. ~/.pi/agent/...) */
+      .cmd-grid { padding: 16px 18px; }
+      .cmd-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 4px;
+        padding: 12px 0;
+      }
+      .cmd-row code {
+        white-space: normal;
+        word-break: break-word;
+        font-size: 13px;
+        line-height: 1.45;
+      }
+      .cmd-row span { font-size: 14px; line-height: 1.5; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation: none !important; transition: none !important; }
     }

@@ -4,7 +4,7 @@ A TUI around [llama.cpp](https://github.com/ggml-org/llama.cpp) for running,
 managing, and benchmarking local GGUF models, and for launching the
 [`pi`](https://pi.dev) coding agent against your local server.
 
-https://github.com/user-attachments/assets/8b451763-bc8a-4707-96f9-9bc78cf6de25
+https://github.com/user-attachments/assets/3a767b12-69ad-406c-a2af-c071132ac28c
 
 Works on Linux and macOS, against any GPU llama.cpp can target (Vulkan,
 Metal, CUDA, ROCm) or CPU-only. Defaults are tuned for iGPU-class hardware
